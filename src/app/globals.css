@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+/*
+  Default brand tokens. These are overridden at runtime by a small
+  <style> block injected from the `theme_settings` table (see
+  ThemeVars.tsx) so the Developer Panel can change colors/fonts
+  without a code deploy.
+*/
+:root {
+  --caffeine-dark: #1c120c;
+  --caffeine-card: #291b13;
+  --caffeine-cream: #f9f4ee;
+  --caffeine-tan: #f0e3d5;
+  --caffeine-accent: #432516;
+  --caffeine-gold: #d99b26;
+  --caffeine-border: #3b2518;
+  --font-cozy: "Comfortaa", cursive, sans-serif;
+  --font-body: "Plus Jakarta Sans", sans-serif;
+}
+
+@theme inline {
+  --color-caffeine-dark: var(--caffeine-dark);
+  --color-caffeine-card: var(--caffeine-card);
+  --color-caffeine-cream: var(--caffeine-cream);
+  --color-caffeine-tan: var(--caffeine-tan);
+  --color-caffeine-accent: var(--caffeine-accent);
+  --color-caffeine-gold: var(--caffeine-gold);
+  --color-caffeine-border: var(--caffeine-border);
+  --font-cozy: var(--font-cozy);
+  --font-body: var(--font-body);
+}
+
+body {
+  background: var(--caffeine-cream);
+  color: var(--caffeine-dark);
+  font-family: var(--font-body);
+}
+
+@keyframes infinite-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-infinite-scroll {
+  animation: infinite-scroll 35s linear infinite;
+}
+
+.carousel-track:hover,
+.carousel-track:focus-within {
+  animation-play-state: paused;
+}
+
