@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import { getSiteSettings, getNavLinks, getMenuItems, getReviews } from "@/lib/data/public";
 import { createClient } from "@/lib/supabase/server";
 import Header from "@/components/site/Header";
-import Hero from "@/components/site/Hero";
-import About from "@/components/site/About";
+import HeroStory from "@/components/site/HeroStory";
 import Menu from "@/components/site/Menu";
 import Reviews from "@/components/site/Reviews";
 import LocationSection from "@/components/site/LocationSection";
@@ -98,8 +97,7 @@ export default async function HomePage() {
       <Header navLinks={navLinks} settings={settings} />
       <CodeInjector snippets={bodyStartSnippets} />
       <main>
-        <Hero settings={settings} />
-        <About settings={settings} />
+        <HeroStory settings={settings} />
         <Menu items={menuItems} />
         <Reviews reviews={reviews} />
         <LocationSection settings={settings} />
