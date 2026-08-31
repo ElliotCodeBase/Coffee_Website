@@ -97,6 +97,15 @@ export default function SiteInfoForm({ settings }: { settings: SiteSettings | nu
       </SectionCard>
 
       <SectionCard title="Our Story / About">
+        <ImageUploadField
+          name="about_image_url"
+          label="Our Story background image"
+          defaultValue={settings?.about_image_url}
+        />
+        <p className="text-xs text-stone-400 -mt-3">
+          Shown behind the &quot;Our Story&quot; text once the hero image splits apart on scroll. Leave blank to
+          reuse the hero image.
+        </p>
         <Field label="Headline" name="about_headline" defaultValue={settings?.about_headline} />
         <Field label="Body text" name="about_body" defaultValue={settings?.about_body} textarea />
       </SectionCard>

@@ -6,14 +6,14 @@ export default function LocationSection({ settings }: { settings: SiteSettings |
     "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d43000!2d-122.3321!3d47.6062!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0!2zNDfCsDM2JzIyLjMiTiAxMjLCsDE5JzU1LjYiVw!5e0!3m2!1sen!2sus!4v1600000000000";
 
   return (
-    <section id="location" className="relative py-20 lg:py-32 bg-caffeine-tan px-6 sm:px-12 lg:px-20 border-b border-stone-300">
-      <div className="max-w-screen-2xl mx-auto grid lg:grid-cols-3 gap-10 lg:gap-12">
-        <div className="bg-caffeine-dark text-white p-8 lg:p-12 rounded-3xl flex flex-col justify-between space-y-8 shadow-xl">
+    <section id="location" className="relative py-14 sm:py-20 lg:py-32 bg-caffeine-tan px-5 sm:px-12 lg:px-20 border-b border-stone-300">
+      <div className="max-w-screen-2xl mx-auto grid lg:grid-cols-3 gap-6 sm:gap-10 lg:gap-12">
+        <div className="bg-caffeine-dark text-white p-6 sm:p-8 lg:p-12 rounded-2xl sm:rounded-3xl flex flex-col justify-between space-y-6 sm:space-y-8 shadow-xl">
           <div>
-            <span className="inline-block text-xs uppercase font-bold tracking-widest text-amber-400 bg-amber-950/60 border border-amber-800/40 px-4 py-1.5 rounded-2xl mb-4">
+            <span className="inline-block text-[11px] sm:text-xs uppercase font-bold tracking-widest text-amber-400 bg-amber-950/60 border border-amber-800/40 px-3.5 sm:px-4 py-1.5 rounded-2xl mb-3 sm:mb-4">
               Find Us
             </span>
-            <h2 className="font-cozy text-3xl sm:text-4xl lg:text-5xl font-bold mb-8">Hours & Location</h2>
+            <h2 className="font-cozy text-2xl sm:text-4xl lg:text-5xl font-bold mb-5 sm:mb-8">Hours & Location</h2>
 
             <div className="mb-8">
               <h3 className="text-amber-300 text-xs lg:text-sm font-bold uppercase tracking-wider mb-2">Address</h3>
@@ -48,7 +48,7 @@ export default function LocationSection({ settings }: { settings: SiteSettings |
           </a>
         </div>
 
-        <div className="lg:col-span-2 min-h-[350px] lg:min-h-[450px] bg-stone-300 rounded-3xl overflow-hidden relative shadow-xl border border-stone-300">
+        <div className="lg:col-span-2 min-h-[240px] sm:min-h-[350px] lg:min-h-[450px] bg-stone-300 rounded-2xl sm:rounded-3xl overflow-hidden relative shadow-xl border border-stone-300">
           <iframe
             title="Coffee Shop Location Map"
             src={mapSrc}

@@ -46,6 +46,7 @@ create table public.site_settings (
   hero_image_url text,
   hero_headline text default 'Good coffee, good people.',
   hero_subtext text,
+  about_image_url text,
   about_headline text,
   about_body text,
   address_line1 text,

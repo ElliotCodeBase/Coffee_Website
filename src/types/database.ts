@@ -17,6 +17,7 @@ export type SiteSettings = {
   hero_image_url: string | null;
   hero_headline: string | null;
   hero_subtext: string | null;
+  about_image_url: string | null;
   about_headline: string | null;
   about_body: string | null;
   address_line1: string | null;
