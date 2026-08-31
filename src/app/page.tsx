@@ -32,10 +32,17 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${name} | ${settings?.tagline || "Cozy Craft Coffee"}`,
     description,
+    alternates: {
+      canonical: "/",
+    },
     openGraph: {
       title: name,
       description,
-      images: settings?.hero_image_url ? [settings.hero_image_url] : undefined,
+      url: "/",
+      siteName: name,
+      images: settings?.hero_image_url
+        ? [{ url: settings.hero_image_url, alt: `${name} — ${settings?.tagline || "coffee shop"}` }]
+        : undefined,
       type: "website",
     },
     twitter: {

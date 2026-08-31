@@ -19,7 +19,7 @@ export default function Header({ navLinks, settings }: { navLinks: NavLink[]; se
               className="w-7 h-7 lg:w-9 lg:h-9 object-contain"
             />
           ) : (
-            <svg className="w-7 h-7 lg:w-9 lg:h-9 text-amber-500 group-hover:text-amber-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className="w-7 h-7 lg:w-9 lg:h-9 text-caffeine-cream group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8zM6 1v3M10 1v3M14 1v3" />
             </svg>
           )}

@@ -16,11 +16,14 @@ function clamp(n: number, min = 0, max = 1) {
 
 export default function HeroStory({ settings }: { settings: SiteSettings | null }) {
   const heroImg = settings?.hero_image_url || FALLBACK_HERO_IMG;
+  const storyImg = settings?.about_image_url || heroImg;
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const halfARef = useRef<HTMLDivElement>(null);
   const halfBRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const storyImgRef = useRef<HTMLDivElement>(null);
+  const storyOverlayRef = useRef<HTMLDivElement>(null);
 
   const heroBadgeRef = useRef<HTMLSpanElement>(null);
   const heroHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -90,6 +93,15 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
       const sHeadingP = clamp((storyP - 0.12) / 0.55);
       const sBodyP = clamp((storyP - 0.24) / 0.55);
 
+      // --- Second background image: crossfades in behind the split as
+      // the "Our Story" content takes over the screen. ---
+      if (storyImgRef.current) {
+        storyImgRef.current.style.opacity = String(storyP);
+      }
+      if (storyOverlayRef.current) {
+        storyOverlayRef.current.style.opacity = String(storyP);
+      }
+
       if (storyBadgeRef.current) {
         storyBadgeRef.current.style.transform = `translateY(${(1 - sBadgeP) * 46}px)`;
         storyBadgeRef.current.style.opacity = String(sBadgeP);
@@ -153,6 +165,24 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
       <span id="about" className="absolute left-0 w-px h-px" style={{ top: "42%" }} aria-hidden="true" />
 
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-caffeine-dark">
+        {/* Second background image: revealed underneath once the hero
+            image splits apart, dedicated to the "Our Story" section. */}
+        <div ref={storyImgRef} className="absolute inset-0 will-change-[opacity]" style={{ opacity: 0 }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={storyImg}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="lazy"
+          />
+        </div>
+        <div
+          ref={storyOverlayRef}
+          className="absolute inset-0 bg-gradient-to-t from-caffeine-dark/95 via-caffeine-dark/70 to-caffeine-dark/40 will-change-[opacity]"
+          style={{ opacity: 0 }}
+        />
+
         {/* Diagonal image halves */}
         <div
           ref={halfARef}
@@ -190,24 +220,24 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
         {/* Hero text (exits left on scroll) */}
         <div
           ref={heroTextBlockRef}
-          className="absolute inset-0 flex items-center px-6 sm:px-12 lg:px-20 xl:px-32 pt-20"
+          className="absolute inset-0 flex items-center px-5 sm:px-12 lg:px-20 xl:px-32 pt-16 sm:pt-20"
         >
-          <div className="relative z-10 w-full max-w-2xl lg:max-w-3xl space-y-6">
+          <div className="relative z-10 w-full max-w-2xl lg:max-w-3xl space-y-4 sm:space-y-6">
             <span
               ref={heroBadgeRef}
-              className="inline-block text-xs uppercase font-bold tracking-widest text-stone-100 bg-white/10 border border-white/15 backdrop-blur-sm px-4 py-1.5 rounded-2xl will-change-transform"
+              className="inline-block text-[10px] sm:text-xs uppercase font-bold tracking-widest text-stone-100 bg-white/10 border border-white/15 backdrop-blur-sm px-3.5 sm:px-4 py-1 sm:py-1.5 rounded-2xl will-change-transform"
             >
               Open Daily
             </span>
             <h1
               ref={heroHeadingRef}
-              className="font-cozy text-4xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight text-white leading-tight will-change-transform"
+              className="font-cozy text-3xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight text-white leading-tight will-change-transform"
             >
               {settings?.hero_headline || "Good coffee, good people."}
             </h1>
             <p
               ref={heroBodyRef}
-              className="text-stone-300 text-sm sm:text-lg lg:text-xl font-normal leading-relaxed max-w-xl will-change-transform"
+              className="text-stone-300 text-xs sm:text-lg lg:text-xl font-normal leading-relaxed max-w-xl will-change-transform"
             >
               {settings?.hero_subtext ||
                 "We keep things simple: carefully roasted beans, house-made syrups, and a warm neighborhood spot to sit back and catch your breath."}
@@ -240,13 +270,13 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
               </span>
               <h2
                 ref={storyHeadingRef}
-                className="font-cozy text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-white will-change-transform"
+                className="font-cozy text-2xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-white will-change-transform"
               >
                 {settings?.about_headline || "Built around the neighborhood."}
               </h2>
               <p
                 ref={storyBodyRef}
-                className="text-stone-300 text-sm sm:text-lg lg:text-xl leading-relaxed font-normal will-change-transform"
+                className="text-stone-300 text-xs sm:text-lg lg:text-xl leading-relaxed font-normal will-change-transform"
               >
                 {settings?.about_body ||
                   "We started with a simple idea: create a room where locals could slow down."}

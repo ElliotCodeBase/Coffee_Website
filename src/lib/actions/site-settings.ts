@@ -16,6 +16,7 @@ const EDITABLE_FIELDS = [
   "hero_image_url",
   "hero_headline",
   "hero_subtext",
+  "about_image_url",
   "about_headline",
   "about_body",
   "address_line1",

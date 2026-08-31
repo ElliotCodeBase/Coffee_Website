@@ -10,18 +10,18 @@ export default function ContactSection({ settings }: { settings: SiteSettings | 
   ].filter((s) => s.url);
 
   return (
-    <section id="contact" className="relative py-24 lg:py-36 bg-caffeine-cream text-caffeine-dark overflow-hidden">
-      <div className="max-w-screen-2xl mx-auto px-6 sm:px-12 lg:px-20 relative z-10">
-        <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          <div className="lg:col-span-5 space-y-8">
+    <section id="contact" className="relative py-16 sm:py-24 lg:py-36 bg-caffeine-cream text-caffeine-dark overflow-hidden">
+      <div className="max-w-screen-2xl mx-auto px-5 sm:px-12 lg:px-20 relative z-10">
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-16 items-center">
+          <div className="lg:col-span-5 space-y-6 sm:space-y-8">
             <div>
-              <span className="inline-block text-xs uppercase font-bold tracking-widest text-caffeine-accent bg-caffeine-tan border border-stone-300 px-4 py-1.5 rounded-2xl mb-4">
+              <span className="inline-block text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-accent bg-caffeine-tan border border-stone-300 px-3.5 sm:px-4 py-1.5 rounded-2xl mb-3 sm:mb-4">
                 Drop a Line
               </span>
-              <h2 className="font-cozy text-3xl sm:text-5xl lg:text-6xl font-bold text-caffeine-dark leading-tight">
+              <h2 className="font-cozy text-2xl sm:text-5xl lg:text-6xl font-bold text-caffeine-dark leading-tight">
                 Let&apos;s talk coffee.
               </h2>
-              <p className="text-stone-600 text-sm sm:text-base lg:text-lg font-normal mt-4 leading-relaxed">
+              <p className="text-stone-600 text-xs sm:text-base lg:text-lg font-normal mt-3 sm:mt-4 leading-relaxed">
                 Got questions about our roasts, want to chat about catering a private event, or just want to say hi?
                 Send us a message below.
               </p>
