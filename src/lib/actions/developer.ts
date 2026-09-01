@@ -138,7 +138,10 @@ export async function inviteUser(formData: FormData): Promise<ActionResult> {
   if (!email) return { error: "Email is required." };
 
   const admin = createAdminClient();
-  const { error } = await admin.auth.admin.inviteUserByEmail(email);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const { error } = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo: `${siteUrl}/admin/set-password`,
+  });
 
   if (error) {
     console.error("inviteUser error:", error.message);

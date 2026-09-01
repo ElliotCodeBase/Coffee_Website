@@ -42,7 +42,10 @@ export async function addStaffMember(formData: FormData): Promise<ActionResult> 
   if (!email) return { error: "Email is required." };
 
   const admin = createAdminClient();
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email);
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+    redirectTo: `${siteUrl}/admin/set-password`,
+  });
 
   if (error || !data.user) {
     console.error("addStaffMember invite error:", error?.message);
