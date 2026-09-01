@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { SiteSettings } from "@/types/database";
+import type { SiteSettings, MenuItem } from "@/types/database";
 
 const FALLBACK_HERO_IMG =
   "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1600&q=80";
@@ -14,7 +14,7 @@ function clamp(n: number, min = 0, max = 1) {
   return Math.min(max, Math.max(min, n));
 }
 
-export default function HeroStory({ settings }: { settings: SiteSettings | null }) {
+export default function HeroStory({ settings, bestSeller }: { settings: SiteSettings | null; bestSeller?: MenuItem | null }) {
   const heroImg = settings?.hero_image_url || FALLBACK_HERO_IMG;
   const storyImg = settings?.about_image_url || heroImg;
 
@@ -35,6 +35,8 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
   const storyHeadingRef = useRef<HTMLHeadingElement>(null);
   const storyBodyRef = useRef<HTMLParagraphElement>(null);
   const storyBlockRef = useRef<HTMLDivElement>(null);
+
+  const bestSellerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -86,6 +88,14 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
       }
       if (heroTextBlockRef.current) {
         heroTextBlockRef.current.style.pointerEvents = splitP > 0.5 ? "none" : "auto";
+      }
+
+      // --- Best seller showcase: drifts right and fades out alongside
+      // the hero text (same badgeP-style timing as the hero badge). ---
+      if (bestSellerRef.current) {
+        bestSellerRef.current.style.transform = `translateX(${badgeP * 100}px)`;
+        bestSellerRef.current.style.opacity = String(1 - badgeP);
+        bestSellerRef.current.style.pointerEvents = badgeP > 0.5 ? "none" : "auto";
       }
 
       // --- Story text: staggered entrance from below ---
@@ -257,6 +267,46 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
             </div>
           </div>
         </div>
+
+        {/* Best seller showcase: floating product callout, tucked into
+            the empty space to the right of the hero text on large
+            screens. Only renders when a menu item is flagged as the
+            best seller. */}
+        {bestSeller && (
+          <div
+            ref={bestSellerRef}
+            className="hidden lg:flex absolute right-10 xl:right-20 top-1/2 -translate-y-1/2 z-10 items-center gap-5 max-w-sm will-change-transform"
+          >
+            <div className="animate-gentle-float relative shrink-0">
+              <div
+                className="absolute inset-0 rounded-full bg-caffeine-gold/30 blur-3xl scale-110"
+                aria-hidden="true"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={bestSeller.image_url || FALLBACK_HERO_IMG}
+                alt={bestSeller.name}
+                className="relative w-40 xl:w-52 h-40 xl:h-52 object-contain drop-shadow-2xl opacity-95"
+              />
+              <span className="absolute -top-2 -right-2 w-16 h-16 xl:w-[4.5rem] xl:h-[4.5rem] rounded-full bg-caffeine-gold text-caffeine-dark text-[9px] xl:text-[10px] font-bold uppercase flex items-center justify-center text-center leading-tight border-4 border-caffeine-dark shadow-lg rotate-[8deg]">
+                Best
+                <br />
+                Seller
+              </span>
+            </div>
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl px-5 py-4">
+              <p className="font-cozy font-bold text-white text-base xl:text-lg leading-snug">{bestSeller.name}</p>
+              {bestSeller.description && (
+                <p className="text-stone-300 text-xs xl:text-sm mt-1.5 line-clamp-3 leading-relaxed">
+                  {bestSeller.description}
+                </p>
+              )}
+              <p className="text-caffeine-gold font-cozy font-bold text-sm xl:text-base mt-2">
+                ${Number(bestSeller.price).toFixed(2)}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Story text (enters from bottom on scroll) */}
         <div ref={storyBlockRef} className="absolute inset-0 flex items-center px-6 sm:px-12 lg:px-20 xl:px-32">

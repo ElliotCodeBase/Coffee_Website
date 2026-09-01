@@ -98,10 +98,20 @@ function MenuItemForm({
 
       <ImageUploadField name="image_url" label="Photo" defaultValue={item?.image_url} />
 
-      <label className="flex items-center gap-2 text-sm font-medium text-stone-700">
-        <input type="checkbox" name="is_available" defaultChecked={item?.is_available ?? true} className="rounded" />
-        Available / shown on site
-      </label>
+      <div className="flex flex-wrap gap-x-6 gap-y-2">
+        <label className="flex items-center gap-2 text-sm font-medium text-stone-700">
+          <input type="checkbox" name="is_available" defaultChecked={item?.is_available ?? true} className="rounded" />
+          Available / shown on site
+        </label>
+        <label className="flex items-center gap-2 text-sm font-medium text-stone-700">
+          <input type="checkbox" name="is_best_seller" defaultChecked={item?.is_best_seller ?? false} className="rounded" />
+          Best Seller
+        </label>
+        <label className="flex items-center gap-2 text-sm font-medium text-stone-700">
+          <input type="checkbox" name="is_new" defaultChecked={item?.is_new ?? false} className="rounded" />
+          New
+        </label>
+      </div>
 
       {error && <p className="text-sm text-red-600 font-semibold">{error}</p>}
 
@@ -175,6 +185,20 @@ export default function MenuItemsManager({ items }: { items: MenuItem[] }) {
                   <p className="font-bold text-sm text-caffeine-dark truncate">{item.name}</p>
                   <p className="text-xs text-stone-400 capitalize">{item.category}</p>
                   <p className="text-sm font-semibold text-caffeine-accent mt-1">${Number(item.price).toFixed(2)}</p>
+                  {(item.is_best_seller || item.is_new) && (
+                    <div className="flex gap-1.5 mt-1.5">
+                      {item.is_best_seller && (
+                        <span className="text-[10px] font-bold uppercase bg-caffeine-gold/20 text-caffeine-gold px-2 py-0.5 rounded-full">
+                          Best Seller
+                        </span>
+                      )}
+                      {item.is_new && (
+                        <span className="text-[10px] font-bold uppercase bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                          New
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 {!item.is_available && (
                   <span className="text-[10px] font-bold uppercase bg-stone-200 text-stone-500 px-2 py-1 rounded-full shrink-0">

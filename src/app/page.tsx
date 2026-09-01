@@ -104,7 +104,7 @@ export default async function HomePage() {
       <Header navLinks={navLinks} settings={settings} />
       <CodeInjector snippets={bodyStartSnippets} />
       <main>
-        <HeroStory settings={settings} />
+        <HeroStory settings={settings} bestSeller={menuItems.find((i) => i.is_best_seller) ?? null} />
         <Menu items={menuItems} />
         <Reviews reviews={reviews} />
         <LocationSection settings={settings} />

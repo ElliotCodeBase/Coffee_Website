@@ -32,7 +32,7 @@ function MenuGrid({ items, fallbackImg }: { items: MenuItem[]; fallbackImg: stri
           className="bg-caffeine-cream p-1.5 sm:p-6 lg:p-7 rounded-lg sm:rounded-3xl border border-stone-300/80 shadow-sm flex flex-col justify-between transition-transform duration-200 ease-out hover:-translate-y-1.5 hover:shadow-xl"
         >
           <div>
-            <div className="aspect-square sm:aspect-[4/3] w-full rounded-md sm:rounded-2xl bg-stone-200 overflow-hidden mb-1.5 sm:mb-5">
+            <div className="relative aspect-square sm:aspect-[4/3] w-full rounded-md sm:rounded-2xl bg-stone-200 overflow-hidden mb-1.5 sm:mb-5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={item.image_url || fallbackImg}
@@ -40,6 +40,15 @@ function MenuGrid({ items, fallbackImg }: { items: MenuItem[]; fallbackImg: stri
                 alt={item.name}
                 className="w-full h-full object-cover"
               />
+              {(item.is_best_seller || item.is_new) && (
+                <span
+                  className={`absolute top-1 left-1 sm:top-2 sm:left-2 text-[7px] sm:text-[10px] font-bold uppercase px-1.5 sm:px-2.5 py-0.5 rounded-full shadow-sm ${
+                    item.is_best_seller ? "bg-caffeine-gold text-caffeine-dark" : "bg-green-500 text-white"
+                  }`}
+                >
+                  {item.is_best_seller ? "Best Seller" : "New"}
+                </span>
+              )}
             </div>
             <h4 className="font-cozy font-bold text-[10px] leading-tight sm:text-xl lg:text-2xl text-caffeine-dark flex items-center justify-between">
               <span className="line-clamp-2 sm:line-clamp-1">{item.name}</span>
@@ -133,8 +142,17 @@ function CategorySection({
 }
 
 export default function Menu({ items }: { items: MenuItem[] }) {
-  const drinks = items.filter((i) => i.category === "drinks");
-  const pastries = items.filter((i) => i.category === "pastries");
+  // Best Seller / New items are pinned to the front of their category
+  // (in whatever order the admin set them) — everything else is sorted
+  // alphabetically by name.
+  function sortForDisplay(list: MenuItem[]): MenuItem[] {
+    const featured = list.filter((i) => i.is_best_seller || i.is_new);
+    const rest = [...list.filter((i) => !i.is_best_seller && !i.is_new)].sort((a, b) => a.name.localeCompare(b.name));
+    return [...featured, ...rest];
+  }
+
+  const drinks = sortForDisplay(items.filter((i) => i.category === "drinks"));
+  const pastries = sortForDisplay(items.filter((i) => i.category === "pastries"));
 
   return (
     <section id="menu" className="relative py-14 sm:py-20 lg:py-32 bg-caffeine-tan px-5 sm:px-12 lg:px-20 border-b border-stone-300">

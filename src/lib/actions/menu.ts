@@ -29,6 +29,8 @@ export async function createMenuItem(formData: FormData): Promise<ActionResult> 
       badge: String(formData.get("badge") || "") || null,
       image_url: String(formData.get("image_url") || "") || null,
       is_available: formData.get("is_available") === "on",
+      is_best_seller: formData.get("is_best_seller") === "on",
+      is_new: formData.get("is_new") === "on",
       sort_order: Number(formData.get("sort_order")) || 0,
     },
   ]);
@@ -64,6 +66,8 @@ export async function updateMenuItem(id: string, formData: FormData): Promise<Ac
       badge: String(formData.get("badge") || "") || null,
       image_url: String(formData.get("image_url") || "") || null,
       is_available: formData.get("is_available") === "on",
+      is_best_seller: formData.get("is_best_seller") === "on",
+      is_new: formData.get("is_new") === "on",
       sort_order: Number(formData.get("sort_order")) || 0,
       updated_at: new Date().toISOString(),
     })

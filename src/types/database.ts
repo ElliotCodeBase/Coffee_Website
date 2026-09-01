@@ -55,6 +55,8 @@ export type MenuItem = {
   image_url: string | null;
   sort_order: number;
   is_available: boolean;
+  is_best_seller: boolean;
+  is_new: boolean;
   created_at: string;
   updated_at: string;
 };

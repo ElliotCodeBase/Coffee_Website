@@ -10,7 +10,40 @@ const STATUS_STYLES: Record<ContactSubmission["status"], string> = {
   archived: "bg-stone-100 text-stone-400",
 };
 
-export default function MessagesList({ submissions }: { submissions: ContactSubmission[] }) {
+/**
+ * Formats a message's timestamp the way a shared inbox usually does:
+ * just the time if it came in today, "day month" if it's from earlier
+ * this year (or within the last year), and "day month year" once it's
+ * over a year old — so an old message is still unambiguous.
+ */
+function formatMessageDate(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+
+  const isToday =
+    date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
+
+  if (isToday) {
+    return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+
+  const msPerYear = 365 * 24 * 60 * 60 * 1000;
+  const overOneYearOld = now.getTime() - date.getTime() > msPerYear;
+
+  return date.toLocaleDateString(undefined, {
+    day: "numeric",
+    month: "short",
+    year: overOneYearOld ? "numeric" : undefined,
+  });
+}
+
+export default function MessagesList({
+  submissions,
+  canManage,
+}: {
+  submissions: ContactSubmission[];
+  canManage: boolean;
+}) {
   const [isPending, startTransition] = useTransition();
 
   function setStatus(id: string, status: ContactSubmission["status"]) {
@@ -40,31 +73,33 @@ export default function MessagesList({ submissions }: { submissions: ContactSubm
                 {msg.email}
               </a>
             </div>
-            <p className="text-xs text-stone-400">{new Date(msg.created_at).toLocaleString()}</p>
+            <p className="text-xs text-stone-400">{formatMessageDate(msg.created_at)}</p>
           </div>
 
           <p className="text-sm text-stone-700 mt-3 whitespace-pre-wrap">{msg.message}</p>
 
-          <div className="flex gap-2 mt-4 pt-3 border-t border-stone-100">
-            {msg.status !== "read" && (
-              <button
-                onClick={() => setStatus(msg.id, "read")}
-                disabled={isPending}
-                className="text-xs font-semibold bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
-              >
-                Mark as read
-              </button>
-            )}
-            {msg.status !== "archived" && (
-              <button
-                onClick={() => setStatus(msg.id, "archived")}
-                disabled={isPending}
-                className="text-xs font-semibold bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
-              >
-                Archive
-              </button>
-            )}
-          </div>
+          {canManage && (
+            <div className="flex gap-2 mt-4 pt-3 border-t border-stone-100">
+              {msg.status !== "read" && (
+                <button
+                  onClick={() => setStatus(msg.id, "read")}
+                  disabled={isPending}
+                  className="text-xs font-semibold bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
+                >
+                  Mark as read
+                </button>
+              )}
+              {msg.status !== "archived" && (
+                <button
+                  onClick={() => setStatus(msg.id, "archived")}
+                  disabled={isPending}
+                  className="text-xs font-semibold bg-stone-100 hover:bg-stone-200 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-60"
+                >
+                  Archive
+                </button>
+              )}
+            </div>
+          )}
         </div>
       ))}
     </div>

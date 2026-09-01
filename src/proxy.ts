@@ -30,23 +30,29 @@ export async function proxy(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
-  // Protect everything under /admin except the login page itself
-  if (path.startsWith("/admin") && path !== "/admin/login") {
+  // Protect everything under /admin except the login page and the
+  // password-setup page (invited users land there with no session yet —
+  // Supabase's browser SDK establishes one client-side from the invite
+  // link's URL hash, which the server never sees).
+  if (path.startsWith("/admin") && path !== "/admin/login" && path !== "/admin/set-password") {
     if (!user) {
       const loginUrl = new URL("/admin/login", request.url);
       loginUrl.searchParams.set("redirectTo", path);
       return NextResponse.redirect(loginUrl);
     }
 
-    // Staff accounts can only manage the food & drinks menu — bounce
-    // them out of every other admin page (deeper check again via RLS).
+    // Staff accounts can manage the food & drinks menu, view (but not
+    // manage) contact messages, and change their own password — nothing
+    // else. Bounce them out of every other admin page (deeper check
+    // again via RLS).
     const { data: viewerProfile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
 
-    if (viewerProfile?.role === "staff" && !path.startsWith("/admin/menu")) {
+    const staffAllowedPrefixes = ["/admin/menu", "/admin/messages", "/admin/account"];
+    if (viewerProfile?.role === "staff" && !staffAllowedPrefixes.some((prefix) => path.startsWith(prefix))) {
       return NextResponse.redirect(new URL("/admin/menu", request.url));
     }
   }

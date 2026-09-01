@@ -14,10 +14,10 @@ const CLIENT_NAV = [
   { href: "/admin/messages", label: "Messages", icon: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" },
 ];
 
-// Admin (the client) can add/remove staff accounts. Staff themselves
-// never see this — it's filtered out below for role === "staff".
+// Admin (the client) can add/remove staff AND other admin accounts.
+// Staff themselves never see this — it's filtered out below.
 const ADMIN_NAV = [
-  { href: "/admin/staff", label: "Staff", icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-8.13a4 4 0 11-4 4 4 4 0 014-4zm6 8a4 4 0 10-4-4" },
+  { href: "/admin/staff", label: "Team", icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-8.13a4 4 0 11-4 4 4 4 0 014-4zm6 8a4 4 0 10-4-4" },
 ];
 
 const DEV_NAV = [
@@ -30,10 +30,11 @@ export default function AdminSidebar({ role }: { role: UserRole | undefined }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Staff accounts only ever see the Menu Items page — everything else
+  // Staff accounts only see Menu Items and Messages — everything else
   // on the site is admin/developer-only (also enforced server-side by
   // middleware + RLS, this is just so they don't see links they can't use).
-  const clientNav = role === "staff" ? CLIENT_NAV.filter((item) => item.href === "/admin/menu") : CLIENT_NAV;
+  const clientNav =
+    role === "staff" ? CLIENT_NAV.filter((item) => item.href === "/admin/menu" || item.href === "/admin/messages") : CLIENT_NAV;
   const roleLabel = role === "developer" ? "Developer access" : role === "staff" ? "Staff access" : "Site editor";
 
   function NavItem({ href, label, icon }: { href: string; label: string; icon: string }) {
@@ -87,6 +88,16 @@ export default function AdminSidebar({ role }: { role: UserRole | undefined }) {
       </nav>
 
       <div className="pt-4 border-t border-stone-200 space-y-1">
+        <Link
+          href="/admin/account"
+          onClick={() => setMobileOpen(false)}
+          className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-stone-600 hover:bg-stone-100 transition-colors"
+        >
+          <svg className="w-4.5 h-4.5" width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          <span>My Account</span>
+        </Link>
         <Link
           href="/"
           target="_blank"
