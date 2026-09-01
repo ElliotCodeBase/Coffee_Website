@@ -30,11 +30,8 @@ export async function proxy(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
-  // Protect everything under /admin except the login page and the
-  // password-setup page (invited users land there with no session yet —
-  // Supabase's browser SDK establishes one client-side from the invite
-  // link's URL hash, which the server never sees).
-  if (path.startsWith("/admin") && path !== "/admin/login" && path !== "/admin/set-password") {
+  // Protect everything under /admin except the login page itself
+  if (path.startsWith("/admin") && path !== "/admin/login") {
     if (!user) {
       const loginUrl = new URL("/admin/login", request.url);
       loginUrl.searchParams.set("redirectTo", path);
