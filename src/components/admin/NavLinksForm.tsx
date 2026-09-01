@@ -28,7 +28,7 @@ export default function NavLinksForm({ navLinks }: { navLinks: NavLink[] }) {
 
       <div className="space-y-3">
         {links.map((link) => (
-          <div key={link.id} className="grid grid-cols-2 gap-3">
+          <div key={link.id} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               value={link.label}
               onChange={(e) => updateField(link.id, "label", e.target.value)}

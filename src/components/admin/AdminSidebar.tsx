@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/lib/actions/auth";
@@ -13,6 +14,12 @@ const CLIENT_NAV = [
   { href: "/admin/messages", label: "Messages", icon: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" },
 ];
 
+// Admin (the client) can add/remove staff accounts. Staff themselves
+// never see this — it's filtered out below for role === "staff".
+const ADMIN_NAV = [
+  { href: "/admin/staff", label: "Staff", icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-8.13a4 4 0 11-4 4 4 4 0 014-4zm6 8a4 4 0 10-4-4" },
+];
+
 const DEV_NAV = [
   { href: "/admin/developer/theme", label: "Theme & Design", icon: "M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M8 12l4 4" },
   { href: "/admin/developer/code", label: "Custom Code", icon: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" },
@@ -21,12 +28,20 @@ const DEV_NAV = [
 
 export default function AdminSidebar({ role }: { role: UserRole | undefined }) {
   const pathname = usePathname();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Staff accounts only ever see the Menu Items page — everything else
+  // on the site is admin/developer-only (also enforced server-side by
+  // middleware + RLS, this is just so they don't see links they can't use).
+  const clientNav = role === "staff" ? CLIENT_NAV.filter((item) => item.href === "/admin/menu") : CLIENT_NAV;
+  const roleLabel = role === "developer" ? "Developer access" : role === "staff" ? "Staff access" : "Site editor";
 
   function NavItem({ href, label, icon }: { href: string; label: string; icon: string }) {
     const active = pathname === href;
     return (
       <Link
         href={href}
+        onClick={() => setMobileOpen(false)}
         className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
           active ? "bg-caffeine-dark text-white" : "text-stone-600 hover:bg-stone-100"
         }`}
@@ -39,18 +54,27 @@ export default function AdminSidebar({ role }: { role: UserRole | undefined }) {
     );
   }
 
-  return (
-    <aside className="w-64 shrink-0 bg-white border-r border-stone-200 h-screen sticky top-0 flex flex-col p-5">
+  const sidebarContent = (
+    <>
       <div className="mb-8 px-2">
         <p className="font-cozy font-bold text-lg text-caffeine-dark">Caffeine Admin</p>
-        <p className="text-xs text-stone-400 mt-0.5">{role === "developer" ? "Developer access" : "Site editor"}</p>
+        <p className="text-xs text-stone-400 mt-0.5">{roleLabel}</p>
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto">
         <p className="px-4 text-[11px] uppercase font-bold tracking-wider text-stone-400 mb-2 mt-2">Content</p>
-        {CLIENT_NAV.map((item) => (
+        {clientNav.map((item) => (
           <NavItem key={item.href} {...item} />
         ))}
+
+        {role === "admin" && (
+          <>
+            <p className="px-4 text-[11px] uppercase font-bold tracking-wider text-stone-400 mb-2 mt-6">Team</p>
+            {ADMIN_NAV.map((item) => (
+              <NavItem key={item.href} {...item} />
+            ))}
+          </>
+        )}
 
         {role === "developer" && (
           <>
@@ -85,6 +109,47 @@ export default function AdminSidebar({ role }: { role: UserRole | undefined }) {
           </button>
         </form>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile top bar — replaces the always-visible sidebar below the md breakpoint */}
+      <div className="md:hidden sticky top-0 z-40 flex items-center justify-between bg-white border-b border-stone-200 px-4 h-14">
+        <div>
+          <p className="font-cozy font-bold text-base text-caffeine-dark leading-tight">Caffeine Admin</p>
+          <p className="text-[11px] text-stone-400 leading-tight">{roleLabel}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setMobileOpen((v) => !v)}
+          aria-label="Toggle admin menu"
+          aria-expanded={mobileOpen}
+          className="p-2 text-stone-600 hover:text-caffeine-dark"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Backdrop for the mobile drawer */}
+      {mobileOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-40 bg-black/40"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar: off-canvas drawer on mobile, static column from md up */}
+      <aside
+        className={`w-72 sm:w-64 shrink-0 bg-white border-r border-stone-200 flex flex-col p-5 fixed inset-y-0 left-0 z-50 transition-transform duration-200 ease-out md:static md:z-auto md:h-screen md:sticky md:top-0 md:translate-x-0 ${
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {sidebarContent}
+      </aside>
+    </>
   );
 }

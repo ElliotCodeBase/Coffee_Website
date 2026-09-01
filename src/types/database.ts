@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "developer";
+export type UserRole = "admin" | "developer" | "staff";
 export type MenuCategory = "drinks" | "pastries";
 
 export type Profile = {

@@ -25,14 +25,14 @@ function MenuGrid({ items, fallbackImg }: { items: MenuItem[]; fallbackImg: stri
     return <p className="text-stone-500 text-xs sm:text-sm">No items yet — check back soon.</p>;
   }
   return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+    <div className="grid grid-cols-4 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6 lg:gap-8">
       {items.map((item) => (
         <div
           key={item.id}
-          className="bg-caffeine-cream p-4 sm:p-6 lg:p-7 rounded-2xl sm:rounded-3xl border border-stone-300/80 shadow-sm flex flex-col justify-between transition-transform duration-200 ease-out hover:-translate-y-1.5 hover:shadow-xl"
+          className="bg-caffeine-cream p-1.5 sm:p-6 lg:p-7 rounded-lg sm:rounded-3xl border border-stone-300/80 shadow-sm flex flex-col justify-between transition-transform duration-200 ease-out hover:-translate-y-1.5 hover:shadow-xl"
         >
           <div>
-            <div className="aspect-[4/3] w-full rounded-xl sm:rounded-2xl bg-stone-200 overflow-hidden mb-3 sm:mb-5">
+            <div className="aspect-square sm:aspect-[4/3] w-full rounded-md sm:rounded-2xl bg-stone-200 overflow-hidden mb-1.5 sm:mb-5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={item.image_url || fallbackImg}
@@ -41,23 +41,23 @@ function MenuGrid({ items, fallbackImg }: { items: MenuItem[]; fallbackImg: stri
                 className="w-full h-full object-cover"
               />
             </div>
-            <h4 className="font-cozy font-bold text-base sm:text-xl lg:text-2xl text-caffeine-dark flex items-center justify-between">
-              {item.name}
+            <h4 className="font-cozy font-bold text-[10px] leading-tight sm:text-xl lg:text-2xl text-caffeine-dark flex items-center justify-between">
+              <span className="line-clamp-2 sm:line-clamp-1">{item.name}</span>
               {item.badge && (
-                <span className="text-[10px] sm:text-[11px] lg:text-xs bg-caffeine-tan text-caffeine-accent px-2 sm:px-2.5 py-0.5 rounded-full font-sans font-bold ml-2">
+                <span className="hidden sm:inline-block text-[10px] sm:text-[11px] lg:text-xs bg-caffeine-tan text-caffeine-accent px-2 sm:px-2.5 py-0.5 rounded-full font-sans font-bold ml-2">
                   {item.badge}
                 </span>
               )}
             </h4>
-            <p className="text-xs sm:text-sm lg:text-base text-stone-600 font-normal mt-1.5 sm:mt-2 mb-3 sm:mb-4 leading-relaxed">
+            <p className="hidden sm:block text-xs sm:text-sm lg:text-base text-stone-600 font-normal mt-1.5 sm:mt-2 mb-3 sm:mb-4 leading-relaxed">
               {item.description}
             </p>
           </div>
-          <div className="border-t border-stone-200 pt-3 sm:pt-4 flex justify-between items-center">
-            <span className="font-cozy font-bold text-lg sm:text-xl lg:text-2xl text-caffeine-accent">
+          <div className="border-t border-stone-200 pt-1 sm:pt-4 mt-1 sm:mt-0 flex justify-between items-center">
+            <span className="font-cozy font-bold text-[11px] sm:text-xl lg:text-2xl text-caffeine-accent">
               ${Number(item.price).toFixed(2)}
             </span>
-            <span className="text-[11px] sm:text-xs lg:text-sm font-medium bg-caffeine-tan text-caffeine-dark px-2.5 sm:px-3 py-1 rounded-2xl">
+            <span className="hidden sm:inline-block text-[11px] sm:text-xs lg:text-sm font-medium bg-caffeine-tan text-caffeine-dark px-2.5 sm:px-3 py-1 rounded-2xl">
               In-Store
             </span>
           </div>

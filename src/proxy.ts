@@ -37,6 +37,18 @@ export async function proxy(request: NextRequest) {
       loginUrl.searchParams.set("redirectTo", path);
       return NextResponse.redirect(loginUrl);
     }
+
+    // Staff accounts can only manage the food & drinks menu — bounce
+    // them out of every other admin page (deeper check again via RLS).
+    const { data: viewerProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (viewerProfile?.role === "staff" && !path.startsWith("/admin/menu")) {
+      return NextResponse.redirect(new URL("/admin/menu", request.url));
+    }
   }
 
   // Protect developer-only routes at the middleware layer too

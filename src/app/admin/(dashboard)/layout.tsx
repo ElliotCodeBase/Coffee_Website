@@ -17,9 +17,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
 
   return (
-    <div className="flex bg-stone-50 min-h-screen font-body text-caffeine-dark">
+    <div className="md:flex bg-stone-50 min-h-screen font-body text-caffeine-dark">
       <AdminSidebar role={user.profile?.role} />
-      <main className="flex-1 min-w-0 p-6 sm:p-10">{children}</main>
+      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-10">{children}</main>
     </div>
   );
 }

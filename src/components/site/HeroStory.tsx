@@ -231,13 +231,13 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
             </span>
             <h1
               ref={heroHeadingRef}
-              className="font-cozy text-3xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight text-white leading-tight will-change-transform"
+              className="font-cozy text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-white leading-tight will-change-transform"
             >
               {settings?.hero_headline || "Good coffee, good people."}
             </h1>
             <p
               ref={heroBodyRef}
-              className="text-stone-300 text-xs sm:text-lg lg:text-xl font-normal leading-relaxed max-w-xl will-change-transform"
+              className="text-stone-300 text-xs sm:text-base lg:text-lg font-normal leading-relaxed max-w-xl will-change-transform"
             >
               {settings?.hero_subtext ||
                 "We keep things simple: carefully roasted beans, house-made syrups, and a warm neighborhood spot to sit back and catch your breath."}
@@ -261,7 +261,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
         {/* Story text (enters from bottom on scroll) */}
         <div ref={storyBlockRef} className="absolute inset-0 flex items-center px-6 sm:px-12 lg:px-20 xl:px-32">
           <div className="relative z-20 w-full max-w-screen-2xl mx-auto">
-            <div className="max-w-3xl space-y-6">
+            <div className="max-w-3xl lg:max-w-4xl space-y-6">
               <span
                 ref={storyBadgeRef}
                 className="inline-block text-xs uppercase font-bold tracking-widest text-stone-100 bg-white/10 border border-white/15 backdrop-blur-sm px-4 py-1.5 rounded-2xl will-change-transform"
@@ -270,16 +270,16 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
               </span>
               <h2
                 ref={storyHeadingRef}
-                className="font-cozy text-2xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-white will-change-transform"
+                className="font-cozy text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight text-white will-change-transform"
               >
                 {settings?.about_headline || "Built around the neighborhood."}
               </h2>
               <p
                 ref={storyBodyRef}
-                className="text-stone-300 text-xs sm:text-lg lg:text-xl leading-relaxed font-normal will-change-transform"
+                className="text-stone-300 text-xs sm:text-base lg:text-lg leading-relaxed font-normal will-change-transform"
               >
                 {settings?.about_body ||
-                  "We started with a simple idea: create a room where locals could slow down."}
+                  "We started with a simple idea: create a room where locals could slow down, put their phones away for a minute, and actually taste their coffee. What began as a handful of tables and a secondhand espresso machine has grown into a daily stop for the neighborhood — but the idea hasn't changed. We source beans in small batches, roast them ourselves, and pull every shot the same careful way whether it's your first visit or your five-hundredth. Come for the coffee, stay for the people who've made this place feel like home."}
               </p>
             </div>
           </div>

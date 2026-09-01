@@ -10,29 +10,23 @@ export default function LocationSection({ settings }: { settings: SiteSettings |
       <div className="max-w-screen-2xl mx-auto grid lg:grid-cols-3 gap-6 sm:gap-10 lg:gap-12">
         <div className="bg-caffeine-dark text-white p-6 sm:p-8 lg:p-12 rounded-2xl sm:rounded-3xl flex flex-col justify-between space-y-6 sm:space-y-8 shadow-xl">
           <div>
-            <span className="inline-block text-[11px] sm:text-xs uppercase font-bold tracking-widest text-amber-400 bg-amber-950/60 border border-amber-800/40 px-3.5 sm:px-4 py-1.5 rounded-2xl mb-3 sm:mb-4">
-              Find Us
-            </span>
-            <h2 className="font-cozy text-2xl sm:text-4xl lg:text-5xl font-bold mb-5 sm:mb-8">Hours & Location</h2>
+            <h2 className="font-cozy text-2xl sm:text-4xl lg:text-5xl font-bold mb-1">Come find us</h2>
+            <p className="text-stone-400 text-sm lg:text-base mb-6 sm:mb-8">
+              Tucked right in the neighborhood — easy to spot, easier to stay a while.
+            </p>
 
-            <div className="mb-8">
-              <h3 className="text-amber-300 text-xs lg:text-sm font-bold uppercase tracking-wider mb-2">Address</h3>
+            <div className="mb-7 pb-7 border-b border-white/10">
               <p className="text-stone-100 font-semibold text-lg lg:text-xl">{settings?.address_line1}</p>
-              <p className="text-stone-300 text-base lg:text-lg">{settings?.address_line2}</p>
+              <p className="text-stone-400 text-base lg:text-lg">{settings?.address_line2}</p>
             </div>
 
-            <div>
-              <h3 className="text-amber-300 text-xs lg:text-sm font-bold uppercase tracking-wider mb-2">
-                When We&apos;re Open
-              </h3>
-              <div className="text-sm sm:text-base lg:text-lg space-y-3 text-stone-200">
-                <p className="flex justify-between">
-                  <span>Mon - Fri:</span> <span>{settings?.hours_weekday}</span>
-                </p>
-                <p className="flex justify-between">
-                  <span>Sat - Sun:</span> <span>{settings?.hours_weekend}</span>
-                </p>
-              </div>
+            <div className="text-sm sm:text-base lg:text-lg space-y-2.5 text-stone-200">
+              <p className="flex justify-between">
+                <span className="text-stone-400">Weekdays</span> <span>{settings?.hours_weekday}</span>
+              </p>
+              <p className="flex justify-between">
+                <span className="text-stone-400">Weekends</span> <span>{settings?.hours_weekend}</span>
+              </p>
             </div>
           </div>
 

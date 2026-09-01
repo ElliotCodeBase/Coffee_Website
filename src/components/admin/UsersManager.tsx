@@ -60,7 +60,8 @@ export default function UsersManager({ users, currentUserId }: { users: StaffUse
         {inviteError && <p className="text-sm text-red-600 font-semibold mt-3">{inviteError}</p>}
         {inviteSuccess && <p className="text-sm text-green-700 font-semibold mt-3">Invite sent!</p>}
         <p className="text-xs text-stone-400 mt-3">
-          New users start with &quot;Site editor&quot; access. Promote them to Developer below if needed.
+          New users start with &quot;Site editor&quot; access. Change their role below if needed — Staff can
+          only manage the food &amp; drinks menu.
         </p>
       </div>
 
@@ -81,6 +82,7 @@ export default function UsersManager({ users, currentUserId }: { users: StaffUse
                   className="text-xs font-semibold px-3 py-2 rounded-xl border border-stone-300 disabled:opacity-60"
                 >
                   <option value="admin">Site editor</option>
+                  <option value="staff">Staff (Menu only)</option>
                   <option value="developer">Developer</option>
                 </select>
                 <button
