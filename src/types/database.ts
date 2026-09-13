@@ -61,17 +61,6 @@ export type MenuItem = {
   updated_at: string;
 };
 
-export type Review = {
-  id: string;
-  author_name: string;
-  rating: number;
-  body: string;
-  avatar_url: string | null;
-  is_published: boolean;
-  sort_order: number;
-  created_at: string;
-};
-
 export type ContactSubmission = {
   id: string;
   name: string;
@@ -118,7 +107,6 @@ export type Database = {
       };
       nav_links: { Row: NavLink; Insert: Partial<NavLink>; Update: Partial<NavLink>; Relationships: never[] };
       menu_items: { Row: MenuItem; Insert: Partial<MenuItem>; Update: Partial<MenuItem>; Relationships: never[] };
-      reviews: { Row: Review; Insert: Partial<Review>; Update: Partial<Review>; Relationships: never[] };
       contact_submissions: {
         Row: ContactSubmission;
         Insert: Partial<ContactSubmission>;

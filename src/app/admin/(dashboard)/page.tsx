@@ -18,9 +18,8 @@ export default async function AdminOverviewPage() {
   const supabase = await createClient();
   const user = await getCurrentUser();
 
-  const [{ count: menuCount }, { count: reviewCount }, { count: newMsgCount }] = await Promise.all([
+  const [{ count: menuCount }, { count: newMsgCount }] = await Promise.all([
     supabase.from("menu_items").select("*", { count: "exact", head: true }),
-    supabase.from("reviews").select("*", { count: "exact", head: true }),
     supabase.from("contact_submissions").select("*", { count: "exact", head: true }).eq("status", "new"),
   ]);
 
@@ -33,9 +32,8 @@ export default async function AdminOverviewPage() {
         <p className="text-sm text-stone-500 mt-1">Here&apos;s what&apos;s happening with your site.</p>
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-5 max-w-3xl">
+      <div className="grid sm:grid-cols-2 gap-5 max-w-3xl">
         <StatCard label="Menu items" value={menuCount ?? 0} href="/admin/menu" />
-        <StatCard label="Published reviews" value={reviewCount ?? 0} href="/admin/reviews" />
         <StatCard label="New messages" value={newMsgCount ?? 0} href="/admin/messages" />
       </div>
 
@@ -47,9 +45,6 @@ export default async function AdminOverviewPage() {
           </Link>
           <Link href="/admin/menu" className="text-sm font-semibold text-caffeine-accent hover:underline">
             Manage menu items →
-          </Link>
-          <Link href="/admin/reviews" className="text-sm font-semibold text-caffeine-accent hover:underline">
-            Manage customer reviews →
           </Link>
           <Link href="/admin/messages" className="text-sm font-semibold text-caffeine-accent hover:underline">
             View contact form messages →

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { SiteSettings, NavLink, MenuItem, Review, ThemeSettings } from "@/types/database";
+import type { SiteSettings, NavLink, MenuItem, ThemeSettings } from "@/types/database";
 
 /**
  * All functions here run on the server (Server Components) and read
@@ -50,20 +50,6 @@ export async function getMenuItems(): Promise<MenuItem[]> {
     .order("sort_order", { ascending: true });
   if (error) {
     console.error("getMenuItems error:", error.message);
-    return [];
-  }
-  return data ?? [];
-}
-
-export async function getReviews(): Promise<Review[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("reviews")
-    .select("*")
-    .eq("is_published", true)
-    .order("sort_order", { ascending: true });
-  if (error) {
-    console.error("getReviews error:", error.message);
     return [];
   }
   return data ?? [];

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { login } from "@/lib/actions/auth";
+import PasswordField from "@/components/shared/PasswordField";
 
 export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
@@ -30,19 +31,7 @@ export default function LoginForm() {
           className="w-full px-4 py-3 text-sm rounded-2xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
         />
       </div>
-      <div>
-        <label htmlFor="password" className="block text-xs font-bold uppercase text-stone-500 mb-2">
-          Password
-        </label>
-        <input
-          type="password"
-          id="password"
-          name="password"
-          required
-          autoComplete="current-password"
-          className="w-full px-4 py-3 text-sm rounded-2xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
-        />
-      </div>
+      <PasswordField id="password" name="password" label="Password" required autoComplete="current-password" />
 
       {error && (
         <p role="alert" className="text-sm text-red-600 font-bold">

@@ -116,7 +116,7 @@ function CategorySection({
             <button
               type="button"
               onClick={() => setVisibleSections((v) => v + 1)}
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-caffeine-dark bg-caffeine-cream hover:bg-white border border-stone-300 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full transition-all active:scale-95 shadow-sm"
+              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-caffeine-dark bg-caffeine-cream hover:bg-white border border-stone-300 px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl transition-all active:scale-95 shadow-sm"
             >
               <span>See more</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
