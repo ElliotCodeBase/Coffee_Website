@@ -1,6 +1,11 @@
 -- ============================================================
 -- Migration: menu "Best Seller" / "New" flags, staff read-only
 -- access to contact messages.
+--
+-- LEGACY MIGRATION — new projects created from schema.sql already
+-- have these columns and policies. Only run this file if you have
+-- an EXISTING database created before schema.sql included them.
+--
 -- Run this in the Supabase SQL Editor. Safe to run as one script —
 -- unlike the staff-role migration, nothing here needs to be split
 -- into separate steps.

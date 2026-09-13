@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import PasswordField from "@/components/shared/PasswordField";
 
 export default function SetPasswordPage() {
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   const [ready, setReady] = useState(false);
   const [checkError, setCheckError] = useState<string | null>(null);
@@ -15,18 +16,79 @@ export default function SetPasswordPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
-  // Supabase's browser client auto-parses the invite link's URL hash
-  // (access_token/refresh_token) and turns it into a real session. We
-  // just need to confirm that a session actually landed before showing
-  // the form — if it didn't, the link was invalid or already used.
+  // IMPORTANT: this page must not trust whatever session happens to already
+  // be sitting in the browser's cookies. The Supabase browser client
+  // (@supabase/ssr) stores its session in cookies, which are shared across
+  // every tab of the same browser for this domain — so if an admin already
+  // has a tab open and logged in, calling `getSession()` here can resolve
+  // with THEIR session before the invite link's own tokens have been
+  // exchanged, since that exchange happens asynchronously. That race is
+  // what caused setting a staff password to silently land the invited
+  // person in the admin's own session instead of their own.
+  //
+  // The fix: pull the invite's access/refresh tokens directly out of the
+  // URL ourselves and call `setSession()` explicitly, so this page only
+  // ever acts on the session the invite link actually grants — never on
+  // whatever else happens to be in cookies from another tab.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
+    let cancelled = false;
+
+    async function establishInviteSession() {
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const accessToken = hash.get("access_token");
+      const refreshToken = hash.get("refresh_token");
+      const hashError = hash.get("error_description");
+
+      const query = new URLSearchParams(window.location.search);
+      const code = query.get("code");
+
+      if (hashError) {
+        if (!cancelled) setCheckError(decodeURIComponent(hashError.replace(/\+/g, " ")));
+        return;
+      }
+
+      // Classic invite-link format: tokens land in the URL hash.
+      if (accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        // Clear the hash so the tokens don't linger in browser history.
+        window.history.replaceState(null, "", window.location.pathname);
+        if (cancelled) return;
+        if (error) {
+          setCheckError("This invite link is invalid or has expired. Ask whoever invited you to send a new one.");
+          return;
+        }
         setReady(true);
-      } else {
+        return;
+      }
+
+      // Newer PKCE-style invite links pass a one-time `code` query param.
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        window.history.replaceState(null, "", window.location.pathname);
+        if (cancelled) return;
+        if (error) {
+          setCheckError("This invite link is invalid or has expired. Ask whoever invited you to send a new one.");
+          return;
+        }
+        setReady(true);
+        return;
+      }
+
+      // No invite tokens in the URL at all — this page was opened directly,
+      // not from a fresh invite link. Never fall back to an ambient session
+      // here (that's exactly the bleed-through this page exists to avoid).
+      if (!cancelled) {
         setCheckError("This invite link is invalid or has expired. Ask whoever invited you to send a new one.");
       }
-    });
+    }
+
+    establishInviteSession();
+    return () => {
+      cancelled = true;
+    };
   }, [supabase]);
 
   function handleSubmit(e: React.FormEvent) {
@@ -65,34 +127,24 @@ export default function SetPasswordPage() {
 
         {ready && (
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label htmlFor="password" className="block text-xs font-bold uppercase text-stone-500 mb-2">
-                New password
-              </label>
-              <input
-                type="password"
-                id="password"
-                required
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 text-sm rounded-2xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
-              />
-            </div>
-            <div>
-              <label htmlFor="confirm" className="block text-xs font-bold uppercase text-stone-500 mb-2">
-                Confirm password
-              </label>
-              <input
-                type="password"
-                id="confirm"
-                required
-                autoComplete="new-password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                className="w-full px-4 py-3 text-sm rounded-2xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
-              />
-            </div>
+            <PasswordField
+              id="password"
+              name="password"
+              label="New password"
+              required
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <PasswordField
+              id="confirm"
+              name="confirm"
+              label="Confirm password"
+              required
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
 
             {submitError && (
               <p role="alert" className="text-sm text-red-600 font-bold">

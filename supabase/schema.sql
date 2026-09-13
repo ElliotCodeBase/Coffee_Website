@@ -11,7 +11,7 @@ create extension if not exists "pgcrypto";
 -- ------------------------------------------------------------
 -- Supabase Auth already stores email/password in auth.users.
 -- We add a profiles table for role-based access control (RBAC).
-create type user_role as enum ('admin', 'developer');
+create type user_role as enum ('admin', 'developer', 'staff');
 
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
@@ -94,26 +94,14 @@ create table public.menu_items (
   image_url text,
   sort_order int not null default 0,
   is_available boolean not null default true,
+  is_best_seller boolean not null default false,
+  is_new boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 -- ------------------------------------------------------------
--- 5. REVIEWS (customer testimonials shown in carousel)
--- ------------------------------------------------------------
-create table public.reviews (
-  id uuid primary key default gen_random_uuid(),
-  author_name text not null,
-  rating smallint not null check (rating between 1 and 5),
-  body text not null,
-  avatar_url text,
-  is_published boolean not null default true,
-  sort_order int not null default 0,
-  created_at timestamptz not null default now()
-);
-
--- ------------------------------------------------------------
--- 6. CONTACT SUBMISSIONS (form backup, even though email sent)
+-- 5. CONTACT SUBMISSIONS (form backup, even though email sent)
 -- ------------------------------------------------------------
 create table public.contact_submissions (
   id uuid primary key default gen_random_uuid(),
@@ -127,7 +115,7 @@ create table public.contact_submissions (
 );
 
 -- ------------------------------------------------------------
--- 7. CUSTOM CODE INJECTIONS (developer-only: header/footer scripts)
+-- 6. CUSTOM CODE INJECTIONS (developer-only: header/footer scripts)
 -- ------------------------------------------------------------
 create table public.custom_code_snippets (
   id uuid primary key default gen_random_uuid(),
@@ -140,7 +128,7 @@ create table public.custom_code_snippets (
 );
 
 -- ------------------------------------------------------------
--- 8. THEME / DESIGN SETTINGS (developer-only: colors, fonts)
+-- 7. THEME / DESIGN SETTINGS (developer-only: colors, fonts)
 -- ------------------------------------------------------------
 create table public.theme_settings (
   id int primary key default 1 check (id = 1),
@@ -167,7 +155,6 @@ alter table public.profiles enable row level security;
 alter table public.site_settings enable row level security;
 alter table public.nav_links enable row level security;
 alter table public.menu_items enable row level security;
-alter table public.reviews enable row level security;
 alter table public.contact_submissions enable row level security;
 alter table public.custom_code_snippets enable row level security;
 alter table public.theme_settings enable row level security;
@@ -194,24 +181,20 @@ create policy "public read nav_links" on public.nav_links
 create policy "admin manage nav_links" on public.nav_links
   for all using (public.current_user_role() in ('admin','developer'));
 
--- Menu items: public read available items, admin+dev manage all
+-- Menu items: public read available items, admin+dev+staff manage all
+-- (staff is the only role besides admin/developer that can write here —
+-- every other table below stays admin/developer only).
 create policy "public read menu_items" on public.menu_items
-  for select using (is_available = true or public.current_user_role() in ('admin','developer'));
+  for select using (is_available = true or public.current_user_role() in ('admin','developer','staff'));
 create policy "admin manage menu_items" on public.menu_items
-  for all using (public.current_user_role() in ('admin','developer'));
-
--- Reviews: public read published, admin+dev manage all
-create policy "public read reviews" on public.reviews
-  for select using (is_published = true or public.current_user_role() in ('admin','developer'));
-create policy "admin manage reviews" on public.reviews
-  for all using (public.current_user_role() in ('admin','developer'));
+  for all using (public.current_user_role() in ('admin','developer','staff'));
 
 -- Contact submissions: NO public read. Insert allowed for anyone (the form).
--- Reading/managing restricted to admin+developer.
+-- Reading is admin+developer+staff; only admin/developer can change status.
 create policy "anyone can submit contact form" on public.contact_submissions
   for insert with check (true);
 create policy "admin read contact_submissions" on public.contact_submissions
-  for select using (public.current_user_role() in ('admin','developer'));
+  for select using (public.current_user_role() in ('admin','developer','staff'));
 create policy "admin update contact_submissions" on public.contact_submissions
   for update using (public.current_user_role() in ('admin','developer'));
 
@@ -245,9 +228,8 @@ insert into public.nav_links (label, href, sort_order) values
   ('Home', '#hero-header', 0),
   ('Our Story', '#about', 1),
   ('Menu', '#menu', 2),
-  ('Reviews', '#reviews', 3),
-  ('Visit', '#location', 4),
-  ('Contact', '#contact', 5);
+  ('Visit', '#location', 3),
+  ('Contact', '#contact', 4);
 
 insert into public.menu_items (category, name, description, price, badge, image_url, sort_order) values
   ('drinks','Classic Americano','Rich double shot espresso with hot filtered water.',3.50,'House Special','https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=500&q=75',0),
@@ -261,8 +243,9 @@ insert into public.menu_items (category, name, description, price, badge, image_
   ('pastries','Wild Blueberry Scone','Tender crumb biscuit packed with berries and lemon glaze.',3.80,null,'https://images.unsplash.com/photo-1586444248902-2f64eddc13df?auto=format&fit=crop&w=500&q=75',2),
   ('pastries','Avocado Sourdough Toast','Smashed avocado, chili flakes, and olive oil on country sourdough.',6.50,'Vegan','https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=500&q=75',3);
 
-insert into public.reviews (author_name, rating, body, avatar_url, sort_order) values
-  ('Shalina Hayden',5,'I visit almost every morning. The atmosphere is wonderful and the coffee always hits the spot.','https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=75',0),
-  ('Marcus Vance',5,'Easily the best honey lavender latte in town. Great seating for getting some remote work done.','https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=75',1),
-  ('Elena Rostova',5,'Fresh croissants and smooth pour-overs. You can really tell they care about what they serve.','https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=75',2),
-  ('David Kim',5,'Such a hidden gem. The staff is super nice and their cold brew tonic keeps me going all summer.',null,3);
+-- Flag one seed item as Best Seller (and one as New) so the header's
+-- floating showcase and the "New" menu badge have something to display
+-- immediately after a fresh reset, instead of both silently rendering
+-- nothing until you manually check a box in the admin panel.
+update public.menu_items set is_best_seller = true where name = 'Honey Lavender Latte';
+update public.menu_items set is_new = true where name = 'Iced Matcha Latte';

@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef } from "react";
 import { uploadImage } from "@/lib/actions/upload";
+import { compressImage } from "@/lib/image-compress";
 
 interface Props {
   name: string;
@@ -22,10 +23,12 @@ export default function ImageUploadField({ name, label, defaultValue, altFieldNa
     if (!file) return;
 
     setError(null);
-    const fd = new FormData();
-    fd.append("file", file);
 
     startTransition(async () => {
+      const compressed = await compressImage(file);
+      const fd = new FormData();
+      fd.append("file", compressed);
+
       const result = await uploadImage(fd);
       if (result.error) {
         setError(result.error);

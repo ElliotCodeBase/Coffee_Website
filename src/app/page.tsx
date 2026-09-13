@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { getSiteSettings, getNavLinks, getMenuItems, getReviews } from "@/lib/data/public";
+import { getSiteSettings, getNavLinks, getMenuItems } from "@/lib/data/public";
 import { createClient } from "@/lib/supabase/server";
 import Header from "@/components/site/Header";
 import HeroStory from "@/components/site/HeroStory";
 import Menu from "@/components/site/Menu";
-import Reviews from "@/components/site/Reviews";
 import LocationSection from "@/components/site/LocationSection";
 import ContactSection from "@/components/site/ContactSection";
 import Footer from "@/components/site/Footer";
@@ -54,11 +53,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [settings, navLinks, menuItems, reviews, bodyStartSnippets, bodyEndSnippets] = await Promise.all([
+  const [settings, navLinks, menuItems, bodyStartSnippets, bodyEndSnippets] = await Promise.all([
     getSiteSettings(),
     getNavLinks(),
     getMenuItems(),
-    getReviews(),
     getActiveSnippets("body_start"),
     getActiveSnippets("body_end"),
   ]);
@@ -106,7 +104,6 @@ export default async function HomePage() {
       <main>
         <HeroStory settings={settings} bestSeller={menuItems.find((i) => i.is_best_seller) ?? null} />
         <Menu items={menuItems} />
-        <Reviews reviews={reviews} />
         <LocationSection settings={settings} />
         <ContactSection settings={settings} />
       </main>

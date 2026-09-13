@@ -40,7 +40,6 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let ticking = false;
 
     function apply(progress: number) {
       // Phase 1 (0 -> 0.55): image splits apart, hero text exits left.
@@ -91,7 +90,8 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
       }
 
       // --- Best seller showcase: drifts right and fades out alongside
-      // the hero text (same badgeP-style timing as the hero badge). ---
+      // the hero text (same badgeP-style timing as the hero badge), so
+      // it visibly disappears as the section transitions into "Our Story". ---
       if (bestSellerRef.current) {
         bestSellerRef.current.style.transform = `translateX(${badgeP * 100}px)`;
         bestSellerRef.current.style.opacity = String(1 - badgeP);
@@ -129,37 +129,74 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
       }
     }
 
-    function update() {
-      ticking = false;
+    function computeProgress(): number {
       const el = wrapperRef.current;
-      if (!el) return;
+      if (!el) return 0;
 
       const rect = el.getBoundingClientRect();
       const scrollable = el.offsetHeight - window.innerHeight;
 
-      if (scrollable <= 0) {
-        apply(0);
-        return;
-      }
+      if (scrollable <= 0) return 0;
 
       const raw = -rect.top / scrollable;
-      const progress = reducedMotion ? (raw > 0.05 ? 1 : 0) : clamp(raw);
-      apply(progress);
+      return reducedMotion ? (raw > 0.05 ? 1 : 0) : clamp(raw);
     }
 
-    function onScroll() {
-      if (!ticking) {
-        ticking = true;
-        requestAnimationFrame(update);
+    // Driven by a continuous requestAnimationFrame loop rather than only
+    // the `scroll` event. Relying solely on `scroll` events broke this
+    // animation in some environments — momentum/inertial scrolling,
+    // scroll events being throttled or coalesced by the browser, and
+    // mobile browser chrome resizing the viewport without firing a
+    // `resize` event all made the section appear "stuck". A rAF loop
+    // just re-reads the current scroll position every frame instead, so
+    // it can't miss an update — it's gated by an IntersectionObserver so
+    // it only runs while this section is actually near the viewport.
+    let rafId: number | null = null;
+    let lastProgress = -1;
+
+    function loop() {
+      const progress = computeProgress();
+      if (progress !== lastProgress) {
+        apply(progress);
+        lastProgress = progress;
+      }
+      rafId = requestAnimationFrame(loop);
+    }
+
+    function startLoop() {
+      if (rafId === null) rafId = requestAnimationFrame(loop);
+    }
+    function stopLoop() {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
       }
     }
 
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    // Run once immediately so the section isn't blank before the first
+    // frame / before the IntersectionObserver reports in.
+    apply(computeProgress());
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) startLoop();
+        else stopLoop();
+      },
+      { rootMargin: "100px 0px" }
+    );
+    if (wrapperRef.current) observer.observe(wrapperRef.current);
+
+    // Late layout shifts (fonts/images finishing load, settings arriving
+    // after hydration) change the wrapper's size/position — recompute
+    // once they happen, even while the rAF loop is paused.
+    const resizeObserver = new ResizeObserver(() => apply(computeProgress()));
+    if (wrapperRef.current) resizeObserver.observe(wrapperRef.current);
+    window.addEventListener("load", () => apply(computeProgress()));
+
     return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      stopLoop();
+      observer.disconnect();
+      resizeObserver.disconnect();
     };
   }, []);
 
@@ -275,7 +312,7 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
         {bestSeller && (
           <div
             ref={bestSellerRef}
-            className="hidden lg:flex absolute right-10 xl:right-20 top-1/2 -translate-y-1/2 z-10 items-center gap-5 max-w-sm will-change-transform"
+            className="hidden md:flex absolute right-4 md:right-6 lg:right-10 xl:right-20 top-1/2 -translate-y-1/2 z-10 items-center gap-3 md:gap-4 lg:gap-5 max-w-[13rem] md:max-w-xs lg:max-w-sm will-change-transform"
           >
             <div className="animate-gentle-float relative shrink-0">
               <div
@@ -286,22 +323,22 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
               <img
                 src={bestSeller.image_url || FALLBACK_HERO_IMG}
                 alt={bestSeller.name}
-                className="relative w-40 xl:w-52 h-40 xl:h-52 object-contain drop-shadow-2xl opacity-95"
+                className="relative w-24 md:w-32 lg:w-40 xl:w-52 h-24 md:h-32 lg:h-40 xl:h-52 object-contain drop-shadow-2xl opacity-95"
               />
-              <span className="absolute -top-2 -right-2 w-16 h-16 xl:w-[4.5rem] xl:h-[4.5rem] rounded-full bg-caffeine-gold text-caffeine-dark text-[9px] xl:text-[10px] font-bold uppercase flex items-center justify-center text-center leading-tight border-4 border-caffeine-dark shadow-lg rotate-[8deg]">
+              <span className="absolute -top-2 -right-2 w-11 h-11 md:w-14 md:h-14 lg:w-16 lg:h-16 xl:w-[4.5rem] xl:h-[4.5rem] rounded-full bg-caffeine-gold text-caffeine-dark text-[7px] md:text-[8px] lg:text-[9px] xl:text-[10px] font-bold uppercase flex items-center justify-center text-center leading-tight border-2 md:border-4 border-caffeine-dark shadow-lg rotate-[8deg]">
                 Best
                 <br />
                 Seller
               </span>
             </div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl px-5 py-4">
-              <p className="font-cozy font-bold text-white text-base xl:text-lg leading-snug">{bestSeller.name}</p>
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl px-3.5 py-3 md:px-5 md:py-4">
+              <p className="font-cozy font-bold text-white text-sm md:text-base lg:text-lg leading-snug">{bestSeller.name}</p>
               {bestSeller.description && (
-                <p className="text-stone-300 text-xs xl:text-sm mt-1.5 line-clamp-3 leading-relaxed">
+                <p className="hidden lg:block text-stone-300 text-xs xl:text-sm mt-1.5 line-clamp-3 leading-relaxed">
                   {bestSeller.description}
                 </p>
               )}
-              <p className="text-caffeine-gold font-cozy font-bold text-sm xl:text-base mt-2">
+              <p className="text-caffeine-gold font-cozy font-bold text-xs md:text-sm lg:text-base mt-1.5 md:mt-2">
                 ${Number(bestSeller.price).toFixed(2)}
               </p>
             </div>

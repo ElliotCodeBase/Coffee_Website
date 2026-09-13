@@ -1,5 +1,11 @@
 -- ============================================================
 -- Migration: add a "staff" role
+--
+-- LEGACY MIGRATION — new projects created from schema.sql already
+-- have 'staff' in the user_role enum and the staff-aware menu_items
+-- policies. Only run this file if you have an EXISTING database
+-- that was created before schema.sql included the staff role.
+--
 -- Run this in the Supabase SQL Editor against your project.
 --
 -- IMPORTANT: run this file in TWO steps, not all at once.
@@ -31,7 +37,7 @@ create policy "public read menu_items" on public.menu_items
 -- table staff accounts are allowed to write to. Every other table's
 -- existing "admin, developer" policies are left untouched, so staff
 -- is automatically blocked from editing site settings, nav links,
--- reviews, messages, theme, and custom code.
+-- messages, theme, and custom code.
 drop policy if exists "admin manage menu_items" on public.menu_items;
 create policy "admin manage menu_items" on public.menu_items
   for all using (public.current_user_role() in ('admin', 'developer', 'staff'));
