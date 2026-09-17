@@ -9,6 +9,7 @@ import ContactSection from "@/components/site/ContactSection";
 import Footer from "@/components/site/Footer";
 import ThemeVars from "@/components/site/ThemeVars";
 import CodeInjector from "@/components/site/CodeInjector";
+import VisitTracker from "@/components/site/VisitTracker";
 
 async function getActiveSnippets(location: "head" | "body_start" | "body_end") {
   const supabase = await createClient();
@@ -93,6 +94,7 @@ export default async function HomePage() {
   return (
     <>
       <ThemeVars />
+      <VisitTracker />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
       <a href="#hero-header" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-white focus:text-black focus:p-4">
@@ -102,7 +104,7 @@ export default async function HomePage() {
       <Header navLinks={navLinks} settings={settings} />
       <CodeInjector snippets={bodyStartSnippets} />
       <main>
-        <HeroStory settings={settings} bestSeller={menuItems.find((i) => i.is_best_seller) ?? null} />
+        <HeroStory settings={settings} />
         <Menu items={menuItems} />
         <LocationSection settings={settings} />
         <ContactSection settings={settings} />

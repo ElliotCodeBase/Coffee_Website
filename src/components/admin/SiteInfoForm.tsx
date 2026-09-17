@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { SiteSettings } from "@/types/database";
+import type { SiteSettings, ImageHistoryEntry, ImageHistoryField } from "@/types/database";
 import { updateSiteSettings } from "@/lib/actions/site-settings";
 import ImageUploadField from "@/components/admin/ImageUploadField";
 import SaveButton from "@/components/admin/SaveButton";
@@ -33,7 +33,7 @@ function Field({
           defaultValue={defaultValue || ""}
           rows={3}
           placeholder={placeholder}
-          className="w-full px-4 py-3 text-sm rounded-2xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
+          className="w-full px-4 py-3 text-sm rounded-md border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
         />
       ) : (
         <input
@@ -42,7 +42,7 @@ function Field({
           type={type}
           defaultValue={defaultValue || ""}
           placeholder={placeholder}
-          className="w-full px-4 py-3 text-sm rounded-2xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
+          className="w-full px-4 py-3 text-sm rounded-md border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
         />
       )}
     </div>
@@ -51,14 +51,20 @@ function Field({
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 space-y-5">
+    <div className="bg-white rounded-lg border border-stone-200 p-6 sm:p-8 space-y-5">
       <h2 className="font-cozy font-bold text-lg text-caffeine-dark">{title}</h2>
       {children}
     </div>
   );
 }
 
-export default function SiteInfoForm({ settings }: { settings: SiteSettings | null }) {
+export default function SiteInfoForm({
+  settings,
+  imageHistory,
+}: {
+  settings: SiteSettings | null;
+  imageHistory?: Record<ImageHistoryField, ImageHistoryEntry[]>;
+}) {
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -87,11 +93,19 @@ export default function SiteInfoForm({ settings }: { settings: SiteSettings | nu
           defaultValue={settings?.logo_url}
           altFieldName="logo_alt"
           altDefaultValue={settings?.logo_alt}
+          historyFieldName="logo_url"
+          history={imageHistory?.logo_url}
         />
       </SectionCard>
 
       <SectionCard title="Hero Section">
-        <ImageUploadField name="hero_image_url" label="Hero / header image" defaultValue={settings?.hero_image_url} />
+        <ImageUploadField
+          name="hero_image_url"
+          label="Hero / header image"
+          defaultValue={settings?.hero_image_url}
+          historyFieldName="hero_image_url"
+          history={imageHistory?.hero_image_url}
+        />
         <Field label="Headline" name="hero_headline" defaultValue={settings?.hero_headline} />
         <Field label="Subtext" name="hero_subtext" defaultValue={settings?.hero_subtext} textarea />
       </SectionCard>
@@ -101,6 +115,8 @@ export default function SiteInfoForm({ settings }: { settings: SiteSettings | nu
           name="about_image_url"
           label="Our Story background image"
           defaultValue={settings?.about_image_url}
+          historyFieldName="about_image_url"
+          history={imageHistory?.about_image_url}
         />
         <p className="text-xs text-stone-400 -mt-3">
           Shown behind the &quot;Our Story&quot; text once the hero image splits apart on scroll. Leave blank to
@@ -158,7 +174,7 @@ export default function SiteInfoForm({ settings }: { settings: SiteSettings | nu
       </SectionCard>
 
       <div className="flex items-center gap-4 sticky bottom-6">
-        <div className="bg-white rounded-2xl border border-stone-200 shadow-lg p-4 flex items-center gap-4">
+        <div className="bg-white rounded-md border border-stone-200 shadow-lg p-4 flex items-center gap-4">
           <SaveButton pending={isPending} />
           {status === "success" && <span className="text-sm font-semibold text-green-700">Saved!</span>}
           {status === "error" && <span className="text-sm font-semibold text-red-600">{errorMsg}</span>}

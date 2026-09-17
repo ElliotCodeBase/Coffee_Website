@@ -1,9 +1,13 @@
-import { getSiteSettings, getNavLinks } from "@/lib/data/public";
+import { getSiteSettings, getNavLinks, getImageHistory } from "@/lib/data/public";
 import SiteInfoForm from "@/components/admin/SiteInfoForm";
 import NavLinksForm from "@/components/admin/NavLinksForm";
 
 export default async function SiteInfoPage() {
-  const [settings, navLinks] = await Promise.all([getSiteSettings(), getNavLinks()]);
+  const [settings, navLinks, imageHistory] = await Promise.all([
+    getSiteSettings(),
+    getNavLinks(),
+    getImageHistory(),
+  ]);
 
   return (
     <div>
@@ -14,7 +18,7 @@ export default async function SiteInfoPage() {
 
       <div className="space-y-6 max-w-3xl">
         <NavLinksForm navLinks={navLinks} />
-        <SiteInfoForm settings={settings} />
+        <SiteInfoForm settings={settings} imageHistory={imageHistory} />
       </div>
     </div>
   );

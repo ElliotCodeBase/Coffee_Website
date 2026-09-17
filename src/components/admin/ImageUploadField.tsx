@@ -1,8 +1,12 @@
 "use client";
 
 import { useState, useTransition, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { uploadImage } from "@/lib/actions/upload";
 import { compressImage } from "@/lib/image-compress";
+import { restoreSiteImage } from "@/lib/actions/site-settings";
+import AdminButton from "@/components/admin/AdminButton";
+import type { ImageHistoryEntry, ImageHistoryField } from "@/types/database";
 
 interface Props {
   name: string;
@@ -10,13 +14,28 @@ interface Props {
   defaultValue?: string | null;
   altFieldName?: string;
   altDefaultValue?: string | null;
+  // When provided, shows a "previous versions" strip below the upload
+  // control the client can revert to. `historyFieldName` must match one
+  // of the three fields the server actually archives history for.
+  historyFieldName?: ImageHistoryField;
+  history?: ImageHistoryEntry[];
 }
 
-export default function ImageUploadField({ name, label, defaultValue, altFieldName, altDefaultValue }: Props) {
+export default function ImageUploadField({
+  name,
+  label,
+  defaultValue,
+  altFieldName,
+  altDefaultValue,
+  historyFieldName,
+  history = [],
+}: Props) {
   const [url, setUrl] = useState(defaultValue || "");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isRestoring, startRestoreTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -38,12 +57,30 @@ export default function ImageUploadField({ name, label, defaultValue, altFieldNa
     });
   }
 
+  function handleRestore(historyUrl: string) {
+    if (!historyFieldName) return;
+    setError(null);
+    startRestoreTransition(async () => {
+      // This saves immediately (unlike the file upload above, which just
+      // stages a value into the form until "Save changes" is clicked) —
+      // restoring is meant to take effect right away, and it archives
+      // whatever's currently active first so it's never lost either way.
+      const result = await restoreSiteImage(historyFieldName, historyUrl);
+      if (result.error) {
+        setError(result.error);
+      } else {
+        setUrl(historyUrl);
+        router.refresh();
+      }
+    });
+  }
+
   return (
     <div>
       <label className="block text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">{label}</label>
 
       <div className="flex items-start gap-4">
-        <div className="w-24 h-24 rounded-2xl bg-stone-100 border border-stone-200 overflow-hidden shrink-0 flex items-center justify-center">
+        <div className="w-24 h-24 rounded-md bg-stone-100 border border-stone-200 overflow-hidden shrink-0 flex items-center justify-center">
           {url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={url} alt="" className="w-full h-full object-cover" />
@@ -56,14 +93,9 @@ export default function ImageUploadField({ name, label, defaultValue, altFieldNa
 
         <div className="flex-1 space-y-2">
           <input type="hidden" name={name} value={url} />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isPending}
-            className="text-sm font-semibold bg-stone-100 hover:bg-stone-200 disabled:opacity-60 px-4 py-2 rounded-xl transition-colors"
-          >
+          <AdminButton type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isPending}>
             {isPending ? "Uploading…" : url ? "Replace image" : "Upload image"}
-          </button>
+          </AdminButton>
           <input
             ref={fileInputRef}
             type="file"
@@ -80,11 +112,39 @@ export default function ImageUploadField({ name, label, defaultValue, altFieldNa
               name={altFieldName}
               defaultValue={altDefaultValue || ""}
               placeholder="Alt text (for accessibility & SEO)"
-              className="w-full mt-2 px-3 py-2 text-sm rounded-xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
+              className="w-full mt-2 px-3 py-2 text-sm rounded-md border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
             />
           )}
         </div>
       </div>
+
+      {historyFieldName && history.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-stone-100">
+          <p className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-2">
+            Previous versions — click to bring one back
+          </p>
+          <div className="flex flex-wrap gap-2.5">
+            {history.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => handleRestore(entry.image_url)}
+                disabled={isRestoring || entry.image_url === url}
+                title={new Date(entry.replaced_at).toLocaleString()}
+                className="group relative w-16 h-16 rounded-md overflow-hidden border border-stone-200 hover:border-caffeine-dark transition-colors disabled:opacity-40 disabled:cursor-default"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={entry.image_url} alt="" className="w-full h-full object-cover" />
+                {entry.image_url !== url && (
+                  <span className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="text-white text-[9px] font-bold uppercase">Restore</span>
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

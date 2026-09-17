@@ -50,7 +50,7 @@ export default function PasswordField({
           onChange={onChange}
           className={
             className ||
-            "w-full px-4 py-3 pr-11 text-sm rounded-2xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
+            "w-full px-4 py-3 pr-11 text-sm rounded-md border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
           }
         />
         <button

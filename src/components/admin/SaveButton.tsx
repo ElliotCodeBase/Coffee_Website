@@ -5,7 +5,7 @@ export default function SaveButton({ pending, label = "Save changes" }: { pendin
     <button
       type="submit"
       disabled={pending}
-      className="bg-caffeine-dark hover:bg-caffeine-card disabled:opacity-60 text-white font-bold px-6 py-3 rounded-2xl text-sm transition-colors active:scale-95"
+      className="inline-flex items-center justify-center gap-2 rounded-md border border-caffeine-dark bg-caffeine-dark px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-caffeine-card disabled:opacity-60 disabled:hover:bg-caffeine-dark active:scale-[0.98] disabled:active:scale-100"
     >
       {pending ? "Saving…" : label}
     </button>

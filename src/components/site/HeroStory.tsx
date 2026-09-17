@@ -1,22 +1,23 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { SiteSettings, MenuItem } from "@/types/database";
+import type { SiteSettings } from "@/types/database";
 
 const FALLBACK_HERO_IMG =
   "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1600&q=80";
+const FALLBACK_STORY_IMG =
+  "https://images.unsplash.com/photo-1752756992329-961db6366376?auto=format&fit=crop&w=1600&q=80";
 
-// How much extra scroll distance (relative to one viewport) drives the
-// animation before the section releases and normal scrolling continues.
 const SCROLL_MULTIPLIER = 2.4;
+const EASE_FACTOR = 0.12;
 
 function clamp(n: number, min = 0, max = 1) {
   return Math.min(max, Math.max(min, n));
 }
 
-export default function HeroStory({ settings, bestSeller }: { settings: SiteSettings | null; bestSeller?: MenuItem | null }) {
+export default function HeroStory({ settings }: { settings: SiteSettings | null }) {
   const heroImg = settings?.hero_image_url || FALLBACK_HERO_IMG;
-  const storyImg = settings?.about_image_url || heroImg;
+  const storyImg = settings?.about_image_url || FALLBACK_STORY_IMG;
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const halfARef = useRef<HTMLDivElement>(null);
@@ -36,19 +37,14 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
   const storyBodyRef = useRef<HTMLParagraphElement>(null);
   const storyBlockRef = useRef<HTMLDivElement>(null);
 
-  const bestSellerRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     function apply(progress: number) {
-      // Phase 1 (0 -> 0.55): image splits apart, hero text exits left.
       const splitP = clamp(progress / 0.55);
-      // Phase 2 (0.4 -> 1): story content rises in from the bottom.
       const storyP = clamp((progress - 0.4) / 0.6);
 
-      // --- Image halves: diagonal split, opposite directions ---
-      const shift = splitP * 65; // vw/vh-ish percentage of travel
+      const shift = splitP * 65;
       const rotate = splitP * 4;
       const fade = 1 - splitP * 0.95;
 
@@ -64,7 +60,6 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
         overlayRef.current.style.opacity = String(1 - splitP * 0.7);
       }
 
-      // --- Hero text: staggered exit to the left ---
       const badgeP = clamp(splitP / 0.55);
       const headingP = clamp((splitP - 0.08) / 0.55);
       const bodyP = clamp((splitP - 0.18) / 0.55);
@@ -89,22 +84,10 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
         heroTextBlockRef.current.style.pointerEvents = splitP > 0.5 ? "none" : "auto";
       }
 
-      // --- Best seller showcase: drifts right and fades out alongside
-      // the hero text (same badgeP-style timing as the hero badge), so
-      // it visibly disappears as the section transitions into "Our Story". ---
-      if (bestSellerRef.current) {
-        bestSellerRef.current.style.transform = `translateX(${badgeP * 100}px)`;
-        bestSellerRef.current.style.opacity = String(1 - badgeP);
-        bestSellerRef.current.style.pointerEvents = badgeP > 0.5 ? "none" : "auto";
-      }
-
-      // --- Story text: staggered entrance from below ---
       const sBadgeP = clamp(storyP / 0.55);
       const sHeadingP = clamp((storyP - 0.12) / 0.55);
       const sBodyP = clamp((storyP - 0.24) / 0.55);
 
-      // --- Second background image: crossfades in behind the split as
-      // the "Our Story" content takes over the screen. ---
       if (storyImgRef.current) {
         storyImgRef.current.style.opacity = String(storyP);
       }
@@ -132,34 +115,25 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
     function computeProgress(): number {
       const el = wrapperRef.current;
       if (!el) return 0;
-
       const rect = el.getBoundingClientRect();
       const scrollable = el.offsetHeight - window.innerHeight;
-
       if (scrollable <= 0) return 0;
-
       const raw = -rect.top / scrollable;
       return reducedMotion ? (raw > 0.05 ? 1 : 0) : clamp(raw);
     }
 
-    // Driven by a continuous requestAnimationFrame loop rather than only
-    // the `scroll` event. Relying solely on `scroll` events broke this
-    // animation in some environments — momentum/inertial scrolling,
-    // scroll events being throttled or coalesced by the browser, and
-    // mobile browser chrome resizing the viewport without firing a
-    // `resize` event all made the section appear "stuck". A rAF loop
-    // just re-reads the current scroll position every frame instead, so
-    // it can't miss an update — it's gated by an IntersectionObserver so
-    // it only runs while this section is actually near the viewport.
     let rafId: number | null = null;
-    let lastProgress = -1;
+    let smoothed = computeProgress();
 
     function loop() {
-      const progress = computeProgress();
-      if (progress !== lastProgress) {
-        apply(progress);
-        lastProgress = progress;
+      const target = computeProgress();
+      if (reducedMotion) {
+        smoothed = target;
+      } else {
+        smoothed += (target - smoothed) * EASE_FACTOR;
+        if (Math.abs(target - smoothed) < 0.0006) smoothed = target;
       }
+      apply(smoothed);
       rafId = requestAnimationFrame(loop);
     }
 
@@ -173,9 +147,7 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
       }
     }
 
-    // Run once immediately so the section isn't blank before the first
-    // frame / before the IntersectionObserver reports in.
-    apply(computeProgress());
+    apply(smoothed);
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -186,12 +158,15 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
     );
     if (wrapperRef.current) observer.observe(wrapperRef.current);
 
-    // Late layout shifts (fonts/images finishing load, settings arriving
-    // after hydration) change the wrapper's size/position — recompute
-    // once they happen, even while the rAF loop is paused.
-    const resizeObserver = new ResizeObserver(() => apply(computeProgress()));
+    const resizeObserver = new ResizeObserver(() => {
+      smoothed = computeProgress();
+      apply(smoothed);
+    });
     if (wrapperRef.current) resizeObserver.observe(wrapperRef.current);
-    window.addEventListener("load", () => apply(computeProgress()));
+    window.addEventListener("load", () => {
+      smoothed = computeProgress();
+      apply(smoothed);
+    });
 
     return () => {
       stopLoop();
@@ -207,13 +182,10 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
       className="relative"
       style={{ height: `${SCROLL_MULTIPLIER * 100}vh` }}
     >
-      {/* Anchor for the "Our Story" nav link — lands roughly where the
-          story content takes over, without breaking the pinned scrub. */}
       <span id="about" className="absolute left-0 w-px h-px" style={{ top: "42%" }} aria-hidden="true" />
 
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-caffeine-dark">
-        {/* Second background image: revealed underneath once the hero
-            image splits apart, dedicated to the "Our Story" section. */}
+        {/* Story background image */}
         <div ref={storyImgRef} className="absolute inset-0 will-change-[opacity]" style={{ opacity: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -264,36 +236,39 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
           className="absolute inset-0 bg-gradient-to-r from-caffeine-dark/95 via-caffeine-dark/70 to-caffeine-dark/30 will-change-[opacity]"
         />
 
-        {/* Hero text (exits left on scroll) */}
+        {/* Hero text — mobile-first sizing */}
         <div
           ref={heroTextBlockRef}
-          className="absolute inset-0 flex items-center px-5 sm:px-12 lg:px-20 xl:px-32 pt-16 sm:pt-20"
+          className="absolute inset-0 flex items-center px-5 sm:px-10 lg:px-20 xl:px-32 pt-14 sm:pt-18 lg:pt-22"
         >
-          <div className="relative z-10 w-full max-w-2xl lg:max-w-3xl space-y-4 sm:space-y-6">
+          <div className="relative z-10 w-full max-w-xl sm:max-w-2xl lg:max-w-3xl space-y-3 sm:space-y-5">
             <span
               ref={heroBadgeRef}
-              className="inline-block text-[10px] sm:text-xs uppercase font-bold tracking-widest text-stone-100 bg-white/10 border border-white/15 backdrop-blur-sm px-3.5 sm:px-4 py-1 sm:py-1.5 rounded-2xl will-change-transform"
+              className="inline-block text-[9px] sm:text-[10px] lg:text-xs uppercase font-bold tracking-widest text-stone-100 border border-white/20 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-md will-change-transform"
             >
               Open Daily
             </span>
             <h1
               ref={heroHeadingRef}
-              className="font-cozy text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-white leading-tight will-change-transform"
+              className="font-cozy text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-white leading-tight will-change-transform"
             >
               {settings?.hero_headline || "Good coffee, good people."}
             </h1>
             <p
               ref={heroBodyRef}
-              className="text-stone-300 text-xs sm:text-base lg:text-lg font-normal leading-relaxed max-w-xl will-change-transform"
+              className="text-stone-300 text-xs sm:text-sm lg:text-base xl:text-lg font-normal leading-relaxed max-w-md sm:max-w-xl will-change-transform"
             >
               {settings?.hero_subtext ||
                 "We keep things simple: carefully roasted beans, house-made syrups, and a warm neighborhood spot to sit back and catch your breath."}
             </p>
 
-            <div ref={heroCueRef} className="pt-4 flex items-center gap-2 text-sm lg:text-base font-bold text-stone-200">
+            <div
+              ref={heroCueRef}
+              className="pt-2 sm:pt-4 flex items-center gap-2 text-xs sm:text-sm lg:text-base font-bold text-stone-200"
+            >
               <span>Scroll to read our story</span>
               <svg
-                className="w-5 h-5 lg:w-6 lg:h-6 animate-bounce"
+                className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -305,65 +280,28 @@ export default function HeroStory({ settings, bestSeller }: { settings: SiteSett
           </div>
         </div>
 
-        {/* Best seller showcase: floating product callout, tucked into
-            the empty space to the right of the hero text on large
-            screens. Only renders when a menu item is flagged as the
-            best seller. */}
-        {bestSeller && (
-          <div
-            ref={bestSellerRef}
-            className="hidden md:flex absolute right-4 md:right-6 lg:right-10 xl:right-20 top-1/2 -translate-y-1/2 z-10 items-center gap-3 md:gap-4 lg:gap-5 max-w-[13rem] md:max-w-xs lg:max-w-sm will-change-transform"
-          >
-            <div className="animate-gentle-float relative shrink-0">
-              <div
-                className="absolute inset-0 rounded-full bg-caffeine-gold/30 blur-3xl scale-110"
-                aria-hidden="true"
-              />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={bestSeller.image_url || FALLBACK_HERO_IMG}
-                alt={bestSeller.name}
-                className="relative w-24 md:w-32 lg:w-40 xl:w-52 h-24 md:h-32 lg:h-40 xl:h-52 object-contain drop-shadow-2xl opacity-95"
-              />
-              <span className="absolute -top-2 -right-2 w-11 h-11 md:w-14 md:h-14 lg:w-16 lg:h-16 xl:w-[4.5rem] xl:h-[4.5rem] rounded-full bg-caffeine-gold text-caffeine-dark text-[7px] md:text-[8px] lg:text-[9px] xl:text-[10px] font-bold uppercase flex items-center justify-center text-center leading-tight border-2 md:border-4 border-caffeine-dark shadow-lg rotate-[8deg]">
-                Best
-                <br />
-                Seller
-              </span>
-            </div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl px-3.5 py-3 md:px-5 md:py-4">
-              <p className="font-cozy font-bold text-white text-sm md:text-base lg:text-lg leading-snug">{bestSeller.name}</p>
-              {bestSeller.description && (
-                <p className="hidden lg:block text-stone-300 text-xs xl:text-sm mt-1.5 line-clamp-3 leading-relaxed">
-                  {bestSeller.description}
-                </p>
-              )}
-              <p className="text-caffeine-gold font-cozy font-bold text-xs md:text-sm lg:text-base mt-1.5 md:mt-2">
-                ${Number(bestSeller.price).toFixed(2)}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Story text (enters from bottom on scroll) */}
-        <div ref={storyBlockRef} className="absolute inset-0 flex items-center px-6 sm:px-12 lg:px-20 xl:px-32">
+        {/* Story text — mobile-first sizing */}
+        <div
+          ref={storyBlockRef}
+          className="absolute inset-0 flex items-center px-5 sm:px-10 lg:px-20 xl:px-32"
+        >
           <div className="relative z-20 w-full max-w-screen-2xl mx-auto">
-            <div className="max-w-3xl lg:max-w-4xl space-y-6">
+            <div className="max-w-xl sm:max-w-2xl lg:max-w-3xl xl:max-w-4xl space-y-4 sm:space-y-6">
               <span
                 ref={storyBadgeRef}
-                className="inline-block text-xs uppercase font-bold tracking-widest text-stone-100 bg-white/10 border border-white/15 backdrop-blur-sm px-4 py-1.5 rounded-2xl will-change-transform"
+                className="inline-block text-[9px] sm:text-xs uppercase font-bold tracking-widest text-stone-100 border border-white/20 px-3 sm:px-4 py-1 sm:py-1.5 rounded-md will-change-transform"
               >
                 Our Roots
               </span>
               <h2
                 ref={storyHeadingRef}
-                className="font-cozy text-2xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight text-white will-change-transform"
+                className="font-cozy text-xl xs:text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight leading-tight text-white will-change-transform"
               >
                 {settings?.about_headline || "Built around the neighborhood."}
               </h2>
               <p
                 ref={storyBodyRef}
-                className="text-stone-300 text-xs sm:text-base lg:text-lg leading-relaxed font-normal will-change-transform"
+                className="text-stone-300 text-xs sm:text-sm lg:text-base xl:text-lg leading-relaxed font-normal will-change-transform"
               >
                 {settings?.about_body ||
                   "We started with a simple idea: create a room where locals could slow down, put their phones away for a minute, and actually taste their coffee. What began as a handful of tables and a secondhand espresso machine has grown into a daily stop for the neighborhood — but the idea hasn't changed. We source beans in small batches, roast them ourselves, and pull every shot the same careful way whether it's your first visit or your five-hundredth. Come for the coffee, stay for the people who've made this place feel like home."}

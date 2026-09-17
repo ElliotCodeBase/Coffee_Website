@@ -155,7 +155,7 @@ export default function Menu({ items }: { items: MenuItem[] }) {
   const pastries = sortForDisplay(items.filter((i) => i.category === "pastries"));
 
   return (
-    <section id="menu" className="relative py-14 sm:py-20 lg:py-32 bg-caffeine-tan px-5 sm:px-12 lg:px-20 border-b border-stone-300">
+    <section id="menu" className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 py-14 sm:py-20 lg:py-32 bg-caffeine-tan px-5 sm:px-12 lg:px-20 border-b border-stone-300">
       <div className="max-w-screen-2xl mx-auto">
         <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 lg:mb-20">
           <span className="inline-block text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-accent bg-caffeine-cream/80 border border-stone-300 px-3.5 sm:px-4 py-1.5 rounded-2xl mb-3 sm:mb-4">

@@ -15,14 +15,14 @@ function ColorField({ label, name, defaultValue }: { label: string; name: string
           type="color"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="w-12 h-12 rounded-xl border border-stone-300 cursor-pointer"
+          className="w-12 h-12 rounded-md border border-stone-300 cursor-pointer"
         />
         <input
           type="text"
           name={name}
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="flex-1 px-4 py-3 text-sm font-mono rounded-2xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
+          className="flex-1 px-4 py-3 text-sm font-mono rounded-md border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
         />
       </div>
     </div>
@@ -43,7 +43,7 @@ export default function ThemeForm({ theme }: { theme: ThemeSettings | null }) {
 
   return (
     <form action={handleSubmit} className="space-y-6 max-w-2xl">
-      <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 space-y-5">
+      <div className="bg-white rounded-lg border border-stone-200 p-6 sm:p-8 space-y-5">
         <h2 className="font-cozy font-bold text-lg text-caffeine-dark">Brand Colors</h2>
         <div className="grid sm:grid-cols-2 gap-5">
           <ColorField label="Dark background" name="color_dark" defaultValue={theme?.color_dark || "#1c120c"} />
@@ -55,7 +55,7 @@ export default function ThemeForm({ theme }: { theme: ThemeSettings | null }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 space-y-5">
+      <div className="bg-white rounded-lg border border-stone-200 p-6 sm:p-8 space-y-5">
         <h2 className="font-cozy font-bold text-lg text-caffeine-dark">Fonts</h2>
         <p className="text-xs text-stone-400 -mt-3">
           Must be exact Google Fonts family names (e.g. &quot;Comfortaa&quot;, &quot;Playfair Display&quot;). Changing
@@ -70,7 +70,7 @@ export default function ThemeForm({ theme }: { theme: ThemeSettings | null }) {
             <input
               name="font_heading"
               defaultValue={theme?.font_heading || "Comfortaa"}
-              className="w-full px-4 py-3 text-sm rounded-2xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
+              className="w-full px-4 py-3 text-sm rounded-md border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
             />
           </div>
           <div>
@@ -78,7 +78,7 @@ export default function ThemeForm({ theme }: { theme: ThemeSettings | null }) {
             <input
               name="font_body"
               defaultValue={theme?.font_body || "Plus Jakarta Sans"}
-              className="w-full px-4 py-3 text-sm rounded-2xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
+              className="w-full px-4 py-3 text-sm rounded-md border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
             />
           </div>
         </div>

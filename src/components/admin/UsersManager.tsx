@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import type { UserRole } from "@/types/database";
 import { inviteUser, updateUserRole, removeUser } from "@/lib/actions/developer";
 import SaveButton from "@/components/admin/SaveButton";
+import AdminButton from "@/components/admin/AdminButton";
 
 interface StaffUser {
   id: string;
@@ -42,7 +43,7 @@ export default function UsersManager({ users, currentUserId }: { users: StaffUse
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8">
+      <div className="bg-white rounded-lg border border-stone-200 p-6 sm:p-8">
         <h2 className="font-cozy font-bold text-lg text-caffeine-dark mb-4">Invite a new staff member</h2>
         <form action={handleInvite} className="flex items-end gap-3">
           <div className="flex-1">
@@ -52,7 +53,7 @@ export default function UsersManager({ users, currentUserId }: { users: StaffUse
               type="email"
               required
               placeholder="teammate@example.com"
-              className="w-full px-4 py-3 text-sm rounded-2xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
+              className="w-full px-4 py-3 text-sm rounded-md border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
             />
           </div>
           <SaveButton pending={isPending} label="Send invite" />
@@ -65,11 +66,11 @@ export default function UsersManager({ users, currentUserId }: { users: StaffUse
         </p>
       </div>
 
-      <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8">
+      <div className="bg-white rounded-lg border border-stone-200 p-6 sm:p-8">
         <h2 className="font-cozy font-bold text-lg text-caffeine-dark mb-4">Staff accounts</h2>
         <div className="space-y-3">
           {users.map((u) => (
-            <div key={u.id} className="flex items-center justify-between gap-4 p-3 rounded-2xl bg-stone-50">
+            <div key={u.id} className="flex items-center justify-between gap-4 p-3 rounded-md bg-stone-50">
               <div className="min-w-0">
                 <p className="text-sm font-bold text-caffeine-dark truncate">{u.full_name || u.email || u.id}</p>
                 {u.full_name && <p className="text-xs text-stone-400 truncate">{u.email}</p>}
@@ -79,19 +80,20 @@ export default function UsersManager({ users, currentUserId }: { users: StaffUse
                   value={u.role}
                   onChange={(e) => handleRoleChange(u.id, e.target.value as UserRole)}
                   disabled={isPending || u.id === currentUserId}
-                  className="text-xs font-semibold px-3 py-2 rounded-xl border border-stone-300 disabled:opacity-60"
+                  className="text-xs font-semibold px-3 py-2 rounded-md border border-stone-300 disabled:opacity-60"
                 >
                   <option value="admin">Site editor</option>
                   <option value="staff">Staff (Menu only)</option>
                   <option value="developer">Developer</option>
                 </select>
-                <button
+                <AdminButton
+                  variant="danger"
+                  size="sm"
                   onClick={() => handleRemove(u.id)}
                   disabled={isPending || u.id === currentUserId}
-                  className="text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100 px-3 py-2 rounded-lg transition-colors disabled:opacity-40"
                 >
                   Remove
-                </button>
+                </AdminButton>
               </div>
             </div>
           ))}

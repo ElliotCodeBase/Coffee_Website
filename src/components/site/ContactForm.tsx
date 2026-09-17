@@ -21,13 +21,24 @@ export default function ContactForm() {
     }
 
     startTransition(async () => {
-      try {
-        let recaptchaToken: string | undefined;
-
-        if (siteKey && typeof window !== "undefined" && window.grecaptcha) {
+      // reCAPTCHA runs in its own try/catch, deliberately separate from
+      // the actual submission below. A reCAPTCHA failure (invalid site
+      // key, script blocked by an ad blocker, Google's endpoint being
+      // slow/unreachable, etc.) should never take down the whole
+      // contact form — the server already treats a missing token as
+      // fine when its own secret key isn't configured, and there's a
+      // honeypot field plus server-side rate limiting as backup spam
+      // defenses either way.
+      let recaptchaToken: string | undefined;
+      if (siteKey && typeof window !== "undefined" && window.grecaptcha) {
+        try {
           recaptchaToken = await window.grecaptcha.execute(siteKey, { action: "contact_form" });
+        } catch (err) {
+          console.error("reCAPTCHA execution failed, submitting without it:", err);
         }
+      }
 
+      try {
         const res = await fetch("/api/contact", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -40,7 +51,18 @@ export default function ContactForm() {
           }),
         });
 
-        const data = await res.json();
+        let data: { error?: string } = {};
+        try {
+          data = await res.json();
+        } catch {
+          // Server returned a non-JSON response (a crash page, a proxy
+          // error page, etc.) — treat it as a generic failure instead of
+          // throwing, so this doesn't get mislabeled as "Network error"
+          // for what's actually a server-side problem.
+          setStatus("error");
+          setErrorMsg("Something went wrong on our end. Please try again in a moment.");
+          return;
+        }
 
         if (!res.ok) {
           setStatus("error");

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import PasswordField from "@/components/shared/PasswordField";
+import AdminButton from "@/components/admin/AdminButton";
 
 export default function SetPasswordPage() {
   const router = useRouter();
@@ -117,7 +118,7 @@ export default function SetPasswordPage() {
 
   return (
     <div className="min-h-screen bg-caffeine-cream flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl p-8 sm:p-10 max-w-md w-full shadow-2xl">
+      <div className="bg-white rounded-lg border border-stone-200 p-8 sm:p-10 max-w-md w-full shadow-xl">
         <h1 className="font-cozy text-2xl font-bold text-caffeine-dark mb-1">Set your password</h1>
         <p className="text-sm text-stone-500 mb-6">Choose a password to finish setting up your account.</p>
 
@@ -152,13 +153,9 @@ export default function SetPasswordPage() {
               </p>
             )}
 
-            <button
-              type="submit"
-              disabled={isPending}
-              className="w-full bg-caffeine-dark hover:bg-caffeine-card disabled:opacity-60 text-white font-bold py-3 text-sm rounded-2xl transition-colors active:scale-95"
-            >
+            <AdminButton type="submit" variant="primary" className="w-full py-3" disabled={isPending}>
               {isPending ? "Saving…" : "Set password & continue"}
-            </button>
+            </AdminButton>
           </form>
         )}
       </div>

@@ -3,25 +3,25 @@ import { z } from "zod";
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-const contactSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(200),
-  email: z.string().trim().email("Please provide a valid email").max(320),
-  topic: z.enum(["general", "catering", "beans", "feedback"]).default("general"),
-  message: z.string().trim().min(1, "Message is required").max(5000),
-  recaptchaToken: z.string().optional(),
-});
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
 /**
- * Verifies a reCAPTCHA v3 token with Google. Returns true if verification
- * passes (or if reCAPTCHA isn't configured — no secret key means the site
- * owner hasn't set it up yet, so we don't block legitimate submissions).
+ * Strips HTML tags and trims a string to prevent stored-XSS via
+ * DB-backed messages being rendered without escaping.
+ */
+function sanitizeText(value: string): string {
+  return value.replace(/<[^>]*>/g, "").trim();
+}
+
+/**
+ * Verifies a reCAPTCHA v3 token. Returns true when verification passes,
+ * or when reCAPTCHA is not yet configured (so we don't block legit
+ * submissions before the site owner has set it up).
  */
 async function verifyRecaptcha(token: string | undefined): Promise<boolean> {
   const secret = process.env.RECAPTCHA_SECRET_KEY;
-  if (!secret) return true; // Not configured — skip verification.
-  if (!token) return false; // Configured but no token provided — likely a bot or scripted request.
+  if (!secret) return true;
+  if (!token) return false;
 
   try {
     const res = await fetch("https://www.google.com/recaptcha/api/siteverify", {
@@ -30,7 +30,6 @@ async function verifyRecaptcha(token: string | undefined): Promise<boolean> {
       body: new URLSearchParams({ secret, response: token }),
     });
     const data = await res.json();
-    // v3 returns a 0.0-1.0 score; 0.5 is Google's suggested default threshold.
     return data.success === true && (data.score === undefined || data.score >= 0.5);
   } catch (err) {
     console.error("reCAPTCHA verification failed:", err);
@@ -38,18 +37,12 @@ async function verifyRecaptcha(token: string | undefined): Promise<boolean> {
   }
 }
 
-/**
- * Very simple in-memory rate limiter: 5 requests per IP per 10 minutes.
- *
- * CAVEAT: this resets whenever the serverless function cold-starts, and
- * doesn't share state across multiple instances. It's a reasonable first
- * line of defense for a small site, but for real protection at scale,
- * replace this with Upstash Redis (has a free tier) or a WAF-level rule
- * (Vercel Firewall / Cloudflare) — see SECURITY.md.
- */
+// ── Rate limiter (in-memory, resets on cold start) ───────────────────────
+// For a production multi-instance deployment, replace with Upstash Redis
+// or a Vercel Firewall rule. See SECURITY.md.
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 5;
-const WINDOW_MS = 10 * 60 * 1000;
+const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
@@ -59,20 +52,59 @@ function isRateLimited(ip: string): boolean {
     rateLimitMap.set(ip, { count: 1, resetAt: now + WINDOW_MS });
     return false;
   }
-
   if (entry.count >= RATE_LIMIT) return true;
-
   entry.count += 1;
   return false;
 }
 
+// ── Schema ───────────────────────────────────────────────────────────────
+const contactSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(200),
+  email: z.string().trim().email("Please provide a valid email").max(320),
+  topic: z.enum(["general", "catering", "beans", "feedback"]).default("general"),
+  message: z.string().trim().min(1, "Message is required").max(5000),
+  recaptchaToken: z.string().optional(),
+});
+
+// ── CORS helper ──────────────────────────────────────────────────────────
+function corsHeaders(request: NextRequest): Record<string, string> {
+  const origin = request.headers.get("origin") ?? "";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+
+  // Allow only the configured site origin (and localhost in dev)
+  const allowed =
+    origin === siteUrl ||
+    (process.env.NODE_ENV === "development" && /^https?:\/\/localhost(:\d+)?$/.test(origin));
+
+  return {
+    "Access-Control-Allow-Origin": allowed ? origin : "null",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Vary": "Origin",
+  };
+}
+
+// ── OPTIONS preflight ─────────────────────────────────────────────────────
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, { status: 204, headers: corsHeaders(request) });
+}
+
+// ── POST handler ──────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const headers = corsHeaders(request);
+
+  // Block cross-origin requests from disallowed origins
+  if (headers["Access-Control-Allow-Origin"] === "null") {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403, headers });
+  }
+
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
 
   if (isRateLimited(ip)) {
     return NextResponse.json(
       { error: "Too many messages sent. Please try again later." },
-      { status: 429 }
+      { status: 429, headers }
     );
   }
 
@@ -80,24 +112,28 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    return NextResponse.json({ error: "Invalid request body." }, { status: 400, headers });
   }
 
   const parsed = contactSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message || "Invalid form data." },
-      { status: 400 }
+      { status: 400, headers }
     );
   }
 
   const { name, email, topic, message, recaptchaToken } = parsed.data;
 
+  // Sanitize text inputs before writing to DB / sending in email
+  const safeName = sanitizeText(name);
+  const safeMessage = sanitizeText(message);
+
   const recaptchaOk = await verifyRecaptcha(recaptchaToken);
   if (!recaptchaOk) {
     return NextResponse.json(
       { error: "Spam verification failed. Please refresh the page and try again." },
-      { status: 400 }
+      { status: 400, headers }
     );
   }
 
@@ -105,40 +141,43 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const { error: dbError } = await supabase.from("contact_submissions").insert([
     {
-      name,
+      name: safeName,
       email,
       topic,
-      message,
+      message: safeMessage,
       ip_address: ip,
     },
   ]);
 
   if (dbError) {
     console.error("Failed to save contact submission:", dbError.message);
-    // Don't fail the whole request just because DB backup failed —
-    // still attempt to send the email so the client doesn't lose the message.
   }
 
-  // 2. Send real email via Resend.
+  // 2. Send real email via Resend (key is server-side only).
   try {
+    const resend = new Resend(process.env.RESEND_API_KEY);
     await resend.emails.send({
       from: process.env.CONTACT_FORM_FROM_EMAIL || "onboarding@resend.dev",
       to: process.env.CONTACT_FORM_TO_EMAIL || "hello@caffeinecoffee.com",
       replyTo: email,
       subject: `New contact form message: ${topic}`,
-      text: `From: ${name} <${email}>\nTopic: ${topic}\n\n${message}`,
+      text: `From: ${safeName} <${email}>\nTopic: ${topic}\n\n${safeMessage}`,
     });
   } catch (emailError) {
     console.error("Failed to send contact email:", emailError);
-    // If BOTH the DB save and email failed, tell the user honestly.
     if (dbError) {
       return NextResponse.json(
-        { error: "We couldn't deliver your message right now. Please try again or call us directly." },
-        { status: 502 }
+        {
+          error:
+            "We couldn't deliver your message right now. Please try again or call us directly.",
+        },
+        { status: 502, headers }
       );
     }
-    // DB save succeeded even though email failed — message is not lost.
   }
 
-  return NextResponse.json({ success: true, message: "Message sent successfully!" });
+  return NextResponse.json(
+    { success: true, message: "Message sent successfully!" },
+    { headers }
+  );
 }
