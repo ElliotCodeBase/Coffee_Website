@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { login } from "@/lib/actions/auth";
 import PasswordField from "@/components/shared/PasswordField";
+import AdminButton from "@/components/admin/AdminButton";
 
 export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +29,7 @@ export default function LoginForm() {
           name="email"
           required
           autoComplete="email"
-          className="w-full px-4 py-3 text-sm rounded-2xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
+          className="w-full px-4 py-3 text-sm rounded-md border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
         />
       </div>
       <PasswordField id="password" name="password" label="Password" required autoComplete="current-password" />
@@ -39,13 +40,9 @@ export default function LoginForm() {
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="w-full bg-caffeine-dark hover:bg-caffeine-card disabled:opacity-60 text-white font-bold py-3 text-sm rounded-2xl transition-colors active:scale-95"
-      >
+      <AdminButton type="submit" variant="primary" className="w-full py-3" disabled={isPending}>
         {isPending ? "Logging in…" : "Log In"}
-      </button>
+      </AdminButton>
     </form>
   );
 }

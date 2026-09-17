@@ -5,6 +5,7 @@ export type Profile = {
   id: string;
   full_name: string | null;
   role: UserRole;
+  is_main_admin: boolean;
   created_at: string;
 };
 
@@ -95,6 +96,21 @@ export type ThemeSettings = {
   updated_at: string;
 };
 
+export type SiteVisit = {
+  id: string;
+  created_at: string;
+  path: string;
+};
+
+export type ImageHistoryField = "logo_url" | "hero_image_url" | "about_image_url";
+
+export type ImageHistoryEntry = {
+  id: string;
+  field_name: ImageHistoryField;
+  image_url: string;
+  replaced_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -123,6 +139,18 @@ export type Database = {
         Row: ThemeSettings;
         Insert: Partial<ThemeSettings>;
         Update: Partial<ThemeSettings>;
+        Relationships: never[];
+      };
+      site_visits: {
+        Row: SiteVisit;
+        Insert: Partial<SiteVisit>;
+        Update: Partial<SiteVisit>;
+        Relationships: never[];
+      };
+      image_history: {
+        Row: ImageHistoryEntry;
+        Insert: Partial<ImageHistoryEntry>;
+        Update: Partial<ImageHistoryEntry>;
         Relationships: never[];
       };
     };

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import type { SiteSettings, NavLink, MenuItem, ThemeSettings } from "@/types/database";
+import type { SiteSettings, NavLink, MenuItem, ThemeSettings, ImageHistoryEntry, ImageHistoryField } from "@/types/database";
 
 /**
  * All functions here run on the server (Server Components) and read
@@ -53,4 +53,33 @@ export async function getMenuItems(): Promise<MenuItem[]> {
     return [];
   }
   return data ?? [];
+}
+
+/**
+ * Previous logo/hero/about images the client can revert back to. RLS
+ * restricts this to admin/developer accounts, so a non-admin viewer
+ * (or the public site) just gets an empty result rather than an error.
+ */
+export async function getImageHistory(): Promise<Record<ImageHistoryField, ImageHistoryEntry[]>> {
+  const empty: Record<ImageHistoryField, ImageHistoryEntry[]> = {
+    logo_url: [],
+    hero_image_url: [],
+    about_image_url: [],
+  };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("image_history")
+    .select("*")
+    .order("replaced_at", { ascending: false });
+
+  if (error) {
+    console.error("getImageHistory error:", error.message);
+    return empty;
+  }
+
+  for (const row of data ?? []) {
+    empty[row.field_name].push(row);
+  }
+  return empty;
 }

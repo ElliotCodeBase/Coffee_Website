@@ -23,45 +23,50 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  // Refresh session if expired — required for Server Components to see auth state
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  function redirect(url: URL) {
+    const redirectResponse = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((cookie) => redirectResponse.cookies.set(cookie));
+    return redirectResponse;
+  }
+
   const path = request.nextUrl.pathname;
 
-  // Protect everything under /admin except the login page and the
-  // password-setup page (invited users land there with no session yet —
-  // Supabase's browser SDK establishes one client-side from the invite
-  // link's URL hash, which the server never sees).
   if (path.startsWith("/admin") && path !== "/admin/login" && path !== "/admin/set-password") {
     if (!user) {
       const loginUrl = new URL("/admin/login", request.url);
       loginUrl.searchParams.set("redirectTo", path);
-      return NextResponse.redirect(loginUrl);
+      return redirect(loginUrl);
     }
 
-    // Staff accounts can manage the food & drinks menu, view (but not
-    // manage) contact messages, and change their own password — nothing
-    // else. Bounce them out of every other admin page (deeper check
-    // again via RLS).
     const { data: viewerProfile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
       .single();
 
-    const staffAllowedPrefixes = ["/admin/menu", "/admin/messages", "/admin/account"];
-    if (viewerProfile?.role === "staff" && !staffAllowedPrefixes.some((prefix) => path.startsWith(prefix))) {
-      return NextResponse.redirect(new URL("/admin/menu", request.url));
+    // Staff can access: Menu, Messages, Analytics, and their own Account page.
+    const staffAllowedPrefixes = [
+      "/admin/menu",
+      "/admin/messages",
+      "/admin/analytics",
+      "/admin/account",
+    ];
+    if (
+      viewerProfile?.role === "staff" &&
+      !staffAllowedPrefixes.some((prefix) => path.startsWith(prefix))
+    ) {
+      return redirect(new URL("/admin/menu", request.url));
     }
   }
 
-  // Protect developer-only routes at the middleware layer too
-  // (deeper role check happens again in the page/layout + RLS)
+  // Developer-only routes
   if (path.startsWith("/admin/developer")) {
     if (!user) {
-      return NextResponse.redirect(new URL("/admin/login", request.url));
+      return redirect(new URL("/admin/login", request.url));
     }
     const { data: profile } = await supabase
       .from("profiles")
@@ -70,7 +75,7 @@ export async function proxy(request: NextRequest) {
       .single();
 
     if (profile?.role !== "developer") {
-      return NextResponse.redirect(new URL("/admin", request.url));
+      return redirect(new URL("/admin", request.url));
     }
   }
 
@@ -80,9 +85,6 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/admin/:path*",
-    /*
-     * Skip static assets and image optimization files.
-     */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

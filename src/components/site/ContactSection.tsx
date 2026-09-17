@@ -10,7 +10,7 @@ export default function ContactSection({ settings }: { settings: SiteSettings | 
   ].filter((s) => s.url);
 
   return (
-    <section id="contact" className="relative py-16 sm:py-24 lg:py-36 bg-caffeine-cream text-caffeine-dark overflow-hidden">
+    <section id="contact" className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 py-16 sm:py-24 lg:py-36 bg-caffeine-cream text-caffeine-dark overflow-hidden">
       <div className="max-w-screen-2xl mx-auto px-5 sm:px-12 lg:px-20 relative z-10">
         <div className="grid lg:grid-cols-12 gap-8 lg:gap-16 items-center">
           <div className="lg:col-span-5 space-y-6 sm:space-y-8">

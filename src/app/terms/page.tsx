@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getSiteSettings } from "@/lib/data/public";
+import VisitTracker from "@/components/site/VisitTracker";
 
 export const metadata = { title: "Terms of Service" };
 
@@ -8,6 +9,7 @@ export default async function TermsPage() {
 
   return (
     <div className="min-h-screen bg-caffeine-cream px-6 py-16 sm:py-24">
+      <VisitTracker />
       <div className="max-w-2xl mx-auto prose prose-stone">
         <Link href="/" className="text-sm font-semibold text-caffeine-accent hover:underline">
           ← Back to site

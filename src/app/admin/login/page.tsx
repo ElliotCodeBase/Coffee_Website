@@ -8,7 +8,7 @@ export const metadata = {
 export default function LoginPage() {
   return (
     <div className="min-h-screen bg-caffeine-cream flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl p-8 sm:p-10 max-w-md w-full shadow-2xl">
+      <div className="bg-white rounded-lg border border-stone-200 p-8 sm:p-10 max-w-md w-full shadow-xl">
         <h1 className="font-cozy text-2xl font-bold text-caffeine-dark mb-1">Staff Login</h1>
         <p className="text-sm text-stone-500 mb-6">Sign in to manage the Caffeine website.</p>
         <LoginForm />

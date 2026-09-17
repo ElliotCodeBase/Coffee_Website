@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getSiteSettings } from "@/lib/data/public";
+import VisitTracker from "@/components/site/VisitTracker";
 
 export const metadata = {
   title: "Page not found",
@@ -11,6 +12,7 @@ export default async function NotFound() {
 
   return (
     <div className="min-h-screen bg-caffeine-cream flex items-center justify-center px-6 py-24">
+      <VisitTracker />
       <div className="max-w-lg w-full text-center">
         <svg
           className="w-14 h-14 mx-auto mb-6 text-caffeine-accent"

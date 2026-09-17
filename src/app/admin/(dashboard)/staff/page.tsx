@@ -6,16 +6,10 @@ import StaffManager from "@/components/admin/StaffManager";
 export default async function TeamAdminPage() {
   const currentUser = await getCurrentUser();
 
-  // Belt-and-suspenders: middleware doesn't block this page for
-  // non-admin/developer roles today, so double-check here too.
   if (!currentUser || (currentUser.profile?.role !== "admin" && currentUser.profile?.role !== "developer")) {
     redirect("/admin");
   }
 
-  // Service-role client: a plain "admin" viewer's own session can't read
-  // other people's profile rows under RLS, so this page always reads via
-  // the service role and lists only admin + staff on purpose (developer
-  // accounts are managed on the separate Users & Roles page instead).
   const adminClient = createAdminClient();
   const [{ data: profiles }, listUsersResult] = await Promise.all([
     adminClient.from("profiles").select("*").in("role", ["admin", "staff"]),
@@ -24,24 +18,32 @@ export default async function TeamAdminPage() {
 
   const emailById = new Map(listUsersResult.data?.users.map((u) => [u.id, u.email]) ?? []);
 
+  // Show all team members except the current user's own row
   const team = (profiles ?? [])
-    .filter((p) => p.id !== currentUser.id) // don't show/let them remove themselves here
+    .filter((p) => p.id !== currentUser.id)
     .map((p) => ({
       id: p.id,
       email: emailById.get(p.id) ?? null,
       full_name: p.full_name,
       role: p.role as "admin" | "staff",
+      is_main_admin: p.is_main_admin ?? false,
     }));
+
+  const currentUserIsMainAdmin = currentUser.profile?.is_main_admin ?? false;
 
   return (
     <div>
       <div className="mb-8">
         <h1 className="font-cozy font-bold text-2xl text-caffeine-dark">Team</h1>
         <p className="text-sm text-stone-500 mt-1">
-          Add other admins (full access) or staff (menu-only access). Developer accounts are managed separately.
+          Add other admins (full access) or staff (menu, messages &amp; analytics). Developer accounts are managed separately.
         </p>
       </div>
-      <StaffManager team={team} />
+      <StaffManager
+        team={team}
+        currentUserId={currentUser.id}
+        currentUserIsMainAdmin={currentUserIsMainAdmin}
+      />
     </div>
   );
 }

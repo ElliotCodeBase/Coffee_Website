@@ -21,7 +21,7 @@ export default function ChangePasswordForm() {
   }
 
   return (
-    <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 max-w-lg">
+    <div className="bg-white rounded-lg border border-stone-200 p-6 sm:p-8 max-w-lg">
       <h2 className="font-cozy font-bold text-lg text-caffeine-dark mb-4">Change password</h2>
       <form action={handleSubmit} className="space-y-4">
         <PasswordField name="current_password" label="Current password" required autoComplete="current-password" />

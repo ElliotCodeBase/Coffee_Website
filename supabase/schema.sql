@@ -6,6 +6,18 @@
 -- Enable UUID generation
 create extension if not exists "pgcrypto";
 
+-- Table-level privileges. RLS policies (defined further below) are the
+-- real access-control boundary — GRANT alone would let anon/authenticated
+-- attempt anything, and RLS narrows that down per-row per-policy. But RLS
+-- means nothing WITHOUT a GRANT: a role with no table-level privilege at
+-- all is refused before RLS ever gets evaluated. Setting this as the
+-- default now means any table created after this line — including ones
+-- added later, or if this schema is ever re-run after a schema reset —
+-- automatically gets the grant without needing to remember it per table.
+alter default privileges in schema public grant select, insert, update, delete on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant usage, select on sequences to anon, authenticated, service_role;
+grant usage on schema public to anon, authenticated, service_role;
+
 -- ------------------------------------------------------------
 -- 1. PROFILES (extends Supabase auth.users with role + name)
 -- ------------------------------------------------------------
@@ -145,6 +157,29 @@ create table public.theme_settings (
 
 insert into public.theme_settings (id) values (1);
 
+-- ------------------------------------------------------------
+-- 8. SITE VISITS (admin-only analytics — daily/weekly/monthly/yearly)
+-- ------------------------------------------------------------
+create table public.site_visits (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  path text not null default '/'
+);
+
+create index site_visits_created_at_idx on public.site_visits (created_at);
+
+-- ------------------------------------------------------------
+-- 9. IMAGE HISTORY (lets the client revert logo/hero/about images)
+-- ------------------------------------------------------------
+create table public.image_history (
+  id uuid primary key default gen_random_uuid(),
+  field_name text not null check (field_name in ('logo_url', 'hero_image_url', 'about_image_url')),
+  image_url text not null,
+  replaced_at timestamptz not null default now()
+);
+
+create index image_history_field_idx on public.image_history (field_name, replaced_at desc);
+
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS)
 -- Public (anon) can READ published content only.
@@ -158,6 +193,8 @@ alter table public.menu_items enable row level security;
 alter table public.contact_submissions enable row level security;
 alter table public.custom_code_snippets enable row level security;
 alter table public.theme_settings enable row level security;
+alter table public.site_visits enable row level security;
+alter table public.image_history enable row level security;
 
 -- Helper: check current user's role
 create function public.current_user_role()
@@ -208,6 +245,20 @@ create policy "public read theme_settings" on public.theme_settings
 create policy "developer write theme_settings" on public.theme_settings
   for update using (public.current_user_role() = 'developer');
 
+-- Site visits: anyone can log a visit (anonymous, insert-only). Only
+-- ADMIN can read the data — staff and developer are excluded on purpose.
+create policy "anyone can log a visit" on public.site_visits
+  for insert
+  to anon, authenticated
+  with check (true);
+create policy "only admins can view visits" on public.site_visits
+  for select using (public.current_user_role() = 'admin');
+
+-- Image history: same access as site_settings itself (admin/developer
+-- only) — staff can't reach the Site Info page in the first place.
+create policy "admin manage image_history" on public.image_history
+  for all using (public.current_user_role() = any (array['admin'::user_role, 'developer'::user_role]));
+
 -- ============================================================
 -- SEED DATA (matches original static template so nothing breaks)
 -- ============================================================
@@ -241,7 +292,11 @@ insert into public.menu_items (category, name, description, price, badge, image_
   ('pastries','Butter Croissant','Traditional French layered pastry, baked fresh daily.',4.00,null,'https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=500&q=75',0),
   ('pastries','Almond Frangipane Tart','Flaky crust filled with sweet almond cream and toasted slices.',4.75,'House Special','https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=500&q=75',1),
   ('pastries','Wild Blueberry Scone','Tender crumb biscuit packed with berries and lemon glaze.',3.80,null,'https://images.unsplash.com/photo-1586444248902-2f64eddc13df?auto=format&fit=crop&w=500&q=75',2),
-  ('pastries','Avocado Sourdough Toast','Smashed avocado, chili flakes, and olive oil on country sourdough.',6.50,'Vegan','https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=500&q=75',3);
+  ('pastries','Avocado Sourdough Toast','Smashed avocado, chili flakes, and olive oil on country sourdough.',6.50,'Vegan','https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=500&q=75',3),
+  ('drinks','Cappuccino','Equal parts espresso, steamed milk, and silky microfoam.',4.25,null,'https://images.unsplash.com/photo-1524671710025-d79530c2f957?auto=format&fit=crop&w=500&q=75',6),
+  ('drinks','Double Chocolate Mocha','Espresso and steamed milk layered with real dark chocolate.',5.15,null,'https://images.unsplash.com/photo-1533651441215-d01c13c8c4ad?auto=format&fit=crop&w=500&q=75',7),
+  ('pastries','Cinnamon Roll','Soft-baked and swirled with brown sugar and cinnamon, finished with a light glaze.',4.25,null,'https://images.unsplash.com/photo-1559745757-f6219279c3e5?auto=format&fit=crop&w=500&q=75',4),
+  ('pastries','New York Cheesecake','Dense and creamy on a graham cracker crust, baked in-house.',5.25,null,'https://images.unsplash.com/photo-1745226518652-a2621a09e096?auto=format&fit=crop&w=500&q=75',5);
 
 -- Flag one seed item as Best Seller (and one as New) so the header's
 -- floating showcase and the "New" menu badge have something to display
@@ -249,3 +304,12 @@ insert into public.menu_items (category, name, description, price, badge, image_
 -- nothing until you manually check a box in the admin panel.
 update public.menu_items set is_best_seller = true where name = 'Honey Lavender Latte';
 update public.menu_items set is_new = true where name = 'Iced Matcha Latte';
+
+-- Explicit, redundant safety net on top of the ALTER DEFAULT PRIVILEGES
+-- near the top of this file: guarantees every table above has the grant
+-- it needs regardless of what role/session actually executed the CREATE
+-- TABLE statements. Cheap to run twice, expensive to silently omit —
+-- this exact gap (RLS policies with no underlying GRANT) is what broke
+-- every menu/login query on the live site after an earlier reset.
+grant select, insert, update, delete on all tables in schema public to anon, authenticated, service_role;
+grant usage, select on all sequences in schema public to anon, authenticated, service_role;

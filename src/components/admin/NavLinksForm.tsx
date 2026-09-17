@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import type { NavLink } from "@/types/database";
 import { updateNavLinks } from "@/lib/actions/site-settings";
+import AdminButton from "@/components/admin/AdminButton";
 
 export default function NavLinksForm({ navLinks }: { navLinks: NavLink[] }) {
   const [links, setLinks] = useState(navLinks.map((l) => ({ id: l.id, label: l.label, href: l.href })));
@@ -22,7 +23,7 @@ export default function NavLinksForm({ navLinks }: { navLinks: NavLink[] }) {
   }
 
   return (
-    <div className="bg-white rounded-3xl border border-stone-200 p-6 sm:p-8 space-y-5">
+    <div className="bg-white rounded-lg border border-stone-200 p-6 sm:p-8 space-y-5">
       <h2 className="font-cozy font-bold text-lg text-caffeine-dark">Navigation Menu</h2>
       <p className="text-xs text-stone-400 -mt-3">Rename menu items or point them to a different section anchor.</p>
 
@@ -32,13 +33,13 @@ export default function NavLinksForm({ navLinks }: { navLinks: NavLink[] }) {
             <input
               value={link.label}
               onChange={(e) => updateField(link.id, "label", e.target.value)}
-              className="px-4 py-2.5 text-sm rounded-xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
+              className="px-4 py-2.5 text-sm rounded-md border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none"
               placeholder="Label"
             />
             <input
               value={link.href}
               onChange={(e) => updateField(link.id, "href", e.target.value)}
-              className="px-4 py-2.5 text-sm rounded-xl border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none font-mono"
+              className="px-4 py-2.5 text-sm rounded-md border border-stone-300 focus:ring-2 focus:ring-caffeine-dark outline-none font-mono"
               placeholder="#section-id"
             />
           </div>
@@ -46,14 +47,9 @@ export default function NavLinksForm({ navLinks }: { navLinks: NavLink[] }) {
       </div>
 
       <div className="flex items-center gap-4 pt-2">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isPending}
-          className="bg-caffeine-dark hover:bg-caffeine-card disabled:opacity-60 text-white font-bold px-6 py-3 rounded-2xl text-sm transition-colors active:scale-95"
-        >
+        <AdminButton type="button" variant="primary" onClick={handleSave} disabled={isPending}>
           {isPending ? "Saving…" : "Save navigation"}
-        </button>
+        </AdminButton>
         {status === "success" && <span className="text-sm font-semibold text-green-700">Saved!</span>}
         {status === "error" && <span className="text-sm font-semibold text-red-600">Failed to save.</span>}
       </div>
