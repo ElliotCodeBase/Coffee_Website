@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { addTeamMember, removeTeamMember, transferMainAdmin } from "@/lib/actions/staff";
 import SaveButton from "@/components/admin/SaveButton";
 import AdminButton from "@/components/admin/AdminButton";
+import InviteLinkNotice from "@/components/admin/InviteLinkNotice";
 
 interface TeamUser {
   id: string;
@@ -24,6 +25,7 @@ export default function StaffManager({
 }) {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [manualInvite, setManualInvite] = useState<{ link: string; notice?: string } | null>(null);
   const [transferTarget, setTransferTarget] = useState<string>("");
   const [transferError, setTransferError] = useState<string | null>(null);
   const [transferSuccess, setTransferSuccess] = useState(false);
@@ -33,9 +35,11 @@ export default function StaffManager({
   function handleAdd(formData: FormData) {
     setInviteError(null);
     setInviteSuccess(false);
+    setManualInvite(null);
     startTransition(async () => {
       const result = await addTeamMember(formData);
       if (result.error) setInviteError(result.error);
+      else if (result.inviteLink) setManualInvite({ link: result.inviteLink, notice: result.notice });
       else setInviteSuccess(true);
     });
   }
@@ -162,7 +166,12 @@ export default function StaffManager({
           </div>
           <SaveButton pending={isPending} label="Send invite" />
         </form>
-        {inviteError && <p className="text-sm text-red-600 font-semibold mt-3">{inviteError}</p>}
+        {inviteError && (
+          <p role="alert" className="text-sm text-red-600 font-semibold mt-3">
+            {inviteError}
+          </p>
+        )}
+        {manualInvite && <InviteLinkNotice link={manualInvite.link} notice={manualInvite.notice} />}
         {inviteSuccess && (
           <p className="text-sm text-green-700 font-semibold mt-3">✓ Invite sent successfully!</p>
         )}

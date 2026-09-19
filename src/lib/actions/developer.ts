@@ -2,11 +2,21 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { inviteTeamUser, normalizeEmail } from "@/lib/invite";
+import { isFontName, isHexColor } from "@/lib/theme-sanitize";
 import type { UserRole } from "@/types/database";
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ALL_ROLES: readonly UserRole[] = ["admin", "developer", "staff"];
+const SNIPPET_LOCATIONS = ["head", "body_start", "body_end"] as const;
+const MAX_SNIPPET_CHARS = 100_000;
 
 export interface ActionResult {
   success?: boolean;
   error?: string;
+  /** Set when the invite email could not be sent; deliver this link by hand. */
+  inviteLink?: string;
+  notice?: string;
 }
 
 async function assertDeveloper() {
@@ -26,19 +36,25 @@ export async function updateTheme(formData: FormData): Promise<ActionResult> {
   const check = await assertDeveloper();
   if (!check.ok) return { error: "Developer access required." };
 
+  /* These values are written into a <style> block on every public page, so
+     only strict hex colors and plain font names are accepted. */
+  const colorFields = ["color_dark", "color_card", "color_cream", "color_tan", "color_accent", "color_gold"] as const;
+  const fontFields = ["font_heading", "font_body"] as const;
+  const values: Record<string, string> = {};
+  for (const f of colorFields) {
+    const v = String(formData.get(f) ?? "").trim();
+    if (!isHexColor(v)) return { error: `${f.replace(/_/g, " ")} must be a hex color like #1c120c.` };
+    values[f] = v;
+  }
+  for (const f of fontFields) {
+    const v = String(formData.get(f) ?? "").trim();
+    if (!isFontName(v)) return { error: `${f.replace(/_/g, " ")} may only contain letters, numbers, spaces, hyphens and underscores.` };
+    values[f] = v;
+  }
+
   const { error } = await check.supabase
     .from("theme_settings")
-    .update({
-      color_dark: String(formData.get("color_dark")),
-      color_card: String(formData.get("color_card")),
-      color_cream: String(formData.get("color_cream")),
-      color_tan: String(formData.get("color_tan")),
-      color_accent: String(formData.get("color_accent")),
-      color_gold: String(formData.get("color_gold")),
-      font_heading: String(formData.get("font_heading")),
-      font_body: String(formData.get("font_body")),
-      updated_at: new Date().toISOString(),
-    })
+    .update({ ...values, updated_at: new Date().toISOString() })
     .eq("id", 1);
 
   if (error) {
@@ -58,9 +74,10 @@ export async function createCodeSnippet(formData: FormData): Promise<ActionResul
   const location = String(formData.get("location")) as "head" | "body_start" | "body_end";
   const code = String(formData.get("code") || "");
 
-  if (!["head", "body_start", "body_end"].includes(location)) {
+  if (!SNIPPET_LOCATIONS.includes(location)) {
     return { error: "Invalid injection location." };
   }
+  if (code.length > MAX_SNIPPET_CHARS) return { error: "That snippet is too large." };
 
   const { error } = await check.supabase.from("custom_code_snippets").insert([
     {
@@ -83,11 +100,14 @@ export async function createCodeSnippet(formData: FormData): Promise<ActionResul
 }
 
 export async function updateCodeSnippet(id: string, formData: FormData): Promise<ActionResult> {
+  if (!UUID_RE.test(id)) return { error: "Invalid snippet." };
   const check = await assertDeveloper();
   if (!check.ok || !("userId" in check)) return { error: "Developer access required." };
 
   const location = String(formData.get("location")) as "head" | "body_start" | "body_end";
   const code = String(formData.get("code") || "");
+  if (!SNIPPET_LOCATIONS.includes(location)) return { error: "Invalid injection location." };
+  if (code.length > MAX_SNIPPET_CHARS) return { error: "That snippet is too large." };
 
   const { error } = await check.supabase
     .from("custom_code_snippets")
@@ -111,6 +131,7 @@ export async function updateCodeSnippet(id: string, formData: FormData): Promise
 }
 
 export async function deleteCodeSnippet(id: string): Promise<ActionResult> {
+  if (!UUID_RE.test(id)) return { error: "Invalid snippet." };
   const check = await assertDeveloper();
   if (!check.ok) return { error: "Developer access required." };
 
@@ -125,48 +146,72 @@ export async function deleteCodeSnippet(id: string): Promise<ActionResult> {
   return { success: true };
 }
 
-/**
- * Invite a new staff user by email (uses the SERVICE ROLE key — must stay
- * server-only). New users default to 'admin' role via the DB trigger;
- * developers can then promote them via updateUserRole below.
- */
+/* Invite a new user by email (developer-only). Uses the same helper as the
+   Team page so both paths behave identically, including the manual-link
+   fallback when Supabase can't send the email. New users start as "staff";
+   change the role afterwards with updateUserRole. */
 export async function inviteUser(formData: FormData): Promise<ActionResult> {
   const check = await assertDeveloper();
   if (!check.ok) return { error: "Developer access required." };
 
-  const email = String(formData.get("email") || "").trim();
-  if (!email) return { error: "Email is required." };
+  const rawEmail = String(formData.get("email") || "");
+  if (!rawEmail.trim()) return { error: "Email is required." };
+  const email = normalizeEmail(rawEmail);
+  if (!email) return { error: "Enter a valid email address." };
 
-  const admin = createAdminClient();
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const { error } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${siteUrl}/admin/set-password`,
-  });
-
-  if (error) {
-    console.error("inviteUser error:", error.message);
-    return { error: error.message || "Failed to send invite." };
-  }
+  const outcome = await inviteTeamUser({ email, fullName: null, role: "staff" });
+  if (!outcome.ok) return { error: outcome.error };
 
   revalidatePath("/admin/developer/users");
-  return { success: true };
+  return outcome.emailSent
+    ? { success: true }
+    : { success: true, inviteLink: outcome.inviteLink, notice: outcome.reason };
 }
 
+/* Change a user's role.
+   The profiles table deliberately has NO update policy (users must never
+   be able to promote themselves), so the previous version — which wrote
+   through the caller's own session — matched zero rows and reported
+   "success" while changing nothing. The developer check above is the
+   authorization; the write itself uses the service-role client and
+   verifies that a row actually changed. */
 export async function updateUserRole(userId: string, role: UserRole): Promise<ActionResult> {
-  const check = await assertDeveloper();
-  if (!check.ok) return { error: "Developer access required." };
+  if (!UUID_RE.test(userId)) return { error: "Invalid user ID." };
+  if (!ALL_ROLES.includes(role)) return { error: "Invalid role." };
 
-  const { error } = await check.supabase.from("profiles").update({ role }).eq("id", userId);
+  const check = await assertDeveloper();
+  if (!check.ok || !("userId" in check)) return { error: "Developer access required." };
+  if (userId === check.userId) return { error: "You cannot change your own role." };
+
+  let admin: ReturnType<typeof createAdminClient>;
+  try {
+    admin = createAdminClient();
+  } catch (err) {
+    console.error("updateUserRole: admin client unavailable:", err instanceof Error ? err.message : err);
+    return { error: "The server isn't configured to manage accounts (missing service role key)." };
+  }
+
+  const { data: target } = await admin.from("profiles").select("role, is_main_admin").eq("id", userId).maybeSingle();
+  if (!target) return { error: "That account was not found." };
+  if (target.is_main_admin && role !== "admin") {
+    return { error: "The Main Admin must stay an admin. Transfer the Main Admin role first." };
+  }
+
+  const { data, error } = await admin.from("profiles").update({ role }).eq("id", userId).select("id");
   if (error) {
     console.error("updateUserRole error:", error.message);
     return { error: "Failed to update role." };
   }
+  if (!data || data.length === 0) return { error: "No account was updated." };
 
   revalidatePath("/admin/developer/users");
+  revalidatePath("/admin/staff");
   return { success: true };
 }
 
 export async function removeUser(userId: string): Promise<ActionResult> {
+  if (!UUID_RE.test(userId)) return { error: "Invalid user ID." };
+
   const check = await assertDeveloper();
   if (!check.ok || !("userId" in check)) return { error: "Developer access required." };
 
@@ -174,7 +219,20 @@ export async function removeUser(userId: string): Promise<ActionResult> {
     return { error: "You cannot remove your own account." };
   }
 
-  const admin = createAdminClient();
+  let admin: ReturnType<typeof createAdminClient>;
+  try {
+    admin = createAdminClient();
+  } catch (err) {
+    console.error("removeUser: admin client unavailable:", err instanceof Error ? err.message : err);
+    return { error: "The server isn't configured to manage accounts (missing service role key)." };
+  }
+
+  /* Same rule the Team page enforces: the Main Admin can't be deleted. */
+  const { data: target } = await admin.from("profiles").select("is_main_admin").eq("id", userId).maybeSingle();
+  if (target?.is_main_admin) {
+    return { error: "This is the Main Admin account. Transfer the Main Admin role to another admin first." };
+  }
+
   const { error } = await admin.auth.admin.deleteUser(userId);
   if (error) {
     console.error("removeUser error:", error.message);
@@ -182,5 +240,6 @@ export async function removeUser(userId: string): Promise<ActionResult> {
   }
 
   revalidatePath("/admin/developer/users");
+  revalidatePath("/admin/staff");
   return { success: true };
 }

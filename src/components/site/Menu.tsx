@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { MenuItem } from "@/types/database";
+import HScroller from "@/components/shared/HScroller";
 
 const DEFAULT_DRINK_IMG =
   "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=500&q=75";
@@ -76,6 +77,40 @@ function MenuGrid({ items, fallbackImg }: { items: MenuItem[]; fallbackImg: stri
   );
 }
 
+/* Phone layout: one readable card per item inside the shared side-scroller.
+   (The old phone layout squeezed four columns of tiny cards into the row.) */
+function MenuSlide({ item, fallbackImg }: { item: MenuItem; fallbackImg: string }) {
+  return (
+    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-stone-300/80 bg-caffeine-cream shadow-sm">
+      <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-stone-200">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={item.image_url || fallbackImg} loading="lazy" alt={item.name} className="h-full w-full object-cover" />
+        {(item.is_best_seller || item.is_new) && (
+          <span
+            className={`absolute left-2 top-2 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase shadow-sm ${
+              item.is_best_seller ? "bg-caffeine-gold text-caffeine-dark" : "bg-green-500 text-white"
+            }`}
+          >
+            {item.is_best_seller ? "Best Seller" : "New"}
+          </span>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col p-4">
+        <h4 className="font-cozy text-lg font-bold leading-snug text-caffeine-dark">{item.name}</h4>
+        {item.badge && (
+          <span className="mt-1.5 self-start rounded-full bg-caffeine-tan px-2.5 py-0.5 text-[11px] font-bold text-caffeine-accent">
+            {item.badge}
+          </span>
+        )}
+        {item.description && (
+          <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-stone-600">{item.description}</p>
+        )}
+        <p className="mt-auto pt-3 font-cozy text-xl font-bold text-caffeine-accent">${Number(item.price).toFixed(2)}</p>
+      </div>
+    </article>
+  );
+}
+
 function CategorySection({
   title,
   items,
@@ -99,6 +134,21 @@ function CategorySection({
         {title}
       </h3>
 
+      {/* Phones: every item in one swipeable row. */}
+      <div className="sm:hidden">
+        {items.length === 0 ? (
+          <p className="text-stone-500 text-xs">No items yet — check back soon.</p>
+        ) : (
+          <HScroller label={title}>
+            {items.map((item) => (
+              <MenuSlide key={item.id} item={item} fallbackImg={fallbackImg} />
+            ))}
+          </HScroller>
+        )}
+      </div>
+
+      {/* Tablet and up: the grid with "See more", unchanged. */}
+      <div className="hidden sm:block">
       <MenuGrid items={preview} fallbackImg={fallbackImg} />
 
       {sections.slice(0, visibleSections).map((section, idx) => (
@@ -137,6 +187,7 @@ function CategorySection({
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

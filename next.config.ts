@@ -2,11 +2,27 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
-// Allowed dev origins for local network testing
-const allowedDevOrigins = isDev ? ["192.168.137.1"] : [];
+/* Allowed dev origins for local network testing (e.g. opening the dev
+   server from a phone or another machine on the LAN). Next.js blocks
+   cross-origin requests to its own /_next/* dev assets from any origin
+   not listed here — the browser gets a 403 on a JS chunk, React never
+   hydrates that page, and every button/form on it silently stops
+   responding to clicks, with no visible error beyond that 403.
+
+   The IP a dev machine is reached at depends on whatever network it's
+   on and changes across sessions, so it isn't hardcoded here. Set
+   DEV_ORIGINS in .env.local (comma-separated, no protocol/port — e.g.
+   DEV_ORIGINS=10.0.17.228,192.168.137.1) to match whatever address
+   shows in the browser's address bar when testing from another device. */
+const allowedDevOrigins = isDev
+  ? (process.env.DEV_ORIGINS?.split(",").map((origin) => origin.trim()).filter(Boolean) ?? [])
+  : [];
 
 const nextConfig: NextConfig = {
   allowedDevOrigins,
+
+  // Don't advertise the framework/version in every response.
+  poweredByHeader: false,
 
   // ── Security Headers ────────────────────────────────────────────────────
   // Applied to every route. A strict CSP is intentionally omitted here
@@ -39,6 +55,21 @@ const nextConfig: NextConfig = {
           // Control cross-origin resource sharing at the document level
           { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
           { key: "Cross-Origin-Resource-Policy", value: "same-site" },
+          // A *partial* CSP. A full script-src can't be set while the
+          // Custom Code developer feature injects arbitrary third-party
+          // tags, but these four directives cost nothing and close real
+          // gaps: no plugin content, no <base> hijacking of every relative
+          // URL on the page, no form posting to an attacker's endpoint,
+          // and no framing by another site.
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'self'",
+            ].join("; "),
+          },
         ],
       },
       // ── Admin routes: stronger protection ─────────────────────────────
@@ -49,6 +80,15 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "no-store, no-cache, must-revalidate" },
           // Never index admin pages
           { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+            ].join("; "),
+          },
         ],
       },
       // ── API routes: no caching, no framing ────────────────────────────

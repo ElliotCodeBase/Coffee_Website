@@ -11,7 +11,7 @@ function isValidStatus(value: string): value is SubmissionStatus {
 }
 
 export async function markSubmissionStatus(id: string, status: SubmissionStatus) {
-  // Validate UUID to prevent injection
+  /* Validate the ID format to prevent injection attacks. */
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
     return { error: "Invalid message ID." };
   }
@@ -21,7 +21,8 @@ export async function markSubmissionStatus(id: string, status: SubmissionStatus)
 
   const supabase = await createClient();
 
-  // Verify caller is admin/developer/staff (RLS also enforces this, double-check here)
+  /* Verify the caller is authenticated. Row Level Security also enforces
+     this, but checking here returns a clear error message. */
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -36,10 +37,9 @@ export async function markSubmissionStatus(id: string, status: SubmissionStatus)
   return { success: true };
 }
 
-/**
- * Permanently deletes a contact submission. Restricted to admin and
- * developer roles (RLS also enforces this server-side).
- */
+/* Permanently delete a contact submission.
+   Only admin and developer roles can do this. Row Level Security also
+   enforces this on the server side. */
 export async function deleteSubmission(id: string) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
     return { error: "Invalid message ID." };
@@ -51,7 +51,7 @@ export async function deleteSubmission(id: string) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated." };
 
-  // Explicit role check before delete (belt-and-suspenders on top of RLS)
+  /* Check the role explicitly. Row Level Security also enforces this. */
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
   if (profile?.role !== "admin" && profile?.role !== "developer") {
     return { error: "Only admins can delete messages." };

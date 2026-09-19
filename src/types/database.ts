@@ -70,6 +70,9 @@ export type ContactSubmission = {
   message: string;
   ip_address: string | null;
   status: "new" | "read" | "archived";
+  /* Result of the notification email. null on rows that predate the column. */
+  email_status: "pending" | "sent" | "failed" | "skipped" | null;
+  email_error: string | null;
   created_at: string;
 };
 

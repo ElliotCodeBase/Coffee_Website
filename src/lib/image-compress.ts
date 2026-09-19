@@ -1,13 +1,13 @@
-/**
- * Downscales and re-compresses an image in the browser before upload, so a
- * 12MP phone photo doesn't get stored (and served to every site visitor) at
- * full resolution. Runs entirely client-side via <canvas> — no server
- * dependency, so it works the same on any hosting target.
- *
- * Skips SVG (vector, nothing to compress) and GIF (canvas re-encoding would
- * silently drop animation frames). Falls back to the original file untouched
- * if anything goes wrong, or if compression didn't actually save space.
- */
+/* Reduce the size and resolution of an image in the browser before upload.
+   This prevents large phone photos from being stored and served to site
+   visitors at full resolution. The function runs entirely in the browser
+   using a canvas element. It does not require a server.
+
+   SVG files are skipped because they are vector images and do not benefit
+   from compression. GIF files are skipped because the canvas API would
+   remove animation frames during re-encoding. If anything goes wrong, or
+   if compression does not reduce the file size, the function returns the
+   original file unchanged. */
 const MAX_DIMENSION = 1920;
 const JPEG_QUALITY = 0.82;
 
@@ -32,9 +32,10 @@ export async function compressImage(file: File): Promise<File> {
     ctx.drawImage(bitmap, 0, 0, width, height);
     bitmap.close();
 
-    // PNGs with transparency stay PNG (re-encoding as JPEG would flatten
-    // transparent pixels to black); everything else becomes JPEG, which
-    // compresses photos far better than PNG/WebP re-encoding at this quality.
+    /* Keep PNG files as PNG to preserve transparency. Converting a PNG
+       with a transparent background to JPEG would fill the transparent
+       area with black. Convert all other formats to JPEG, which compresses
+       photos more efficiently than PNG or WebP at this quality level. */
     const outputType = file.type === "image/png" ? "image/png" : "image/jpeg";
 
     const blob: Blob | null = await new Promise((resolve) =>

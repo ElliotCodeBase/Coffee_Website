@@ -27,13 +27,33 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+/* This layout wraps every route in the app — the public site and the
+   entire /admin section alike — so a query here has the largest possible
+   blast radius of anywhere in the codebase: if it throws, nothing
+   renders anywhere, not even a route's own error.tsx (a layout's errors
+   are caught by the *parent* segment's boundary, and this is already the
+   root). Catch and fall back to no snippets rather than let that happen. */
+async function getHeadSnippets() {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("custom_code_snippets")
+      .select("id, code")
+      .eq("location", "head")
+      .eq("is_active", true);
+    if (error) {
+      console.error("getHeadSnippets error:", error.message);
+      return [];
+    }
+    return data ?? [];
+  } catch (err) {
+    console.error("getHeadSnippets threw:", err instanceof Error ? err.message : err);
+    return [];
+  }
+}
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: headSnippets } = await supabase
-    .from("custom_code_snippets")
-    .select("id, code")
-    .eq("location", "head")
-    .eq("is_active", true);
+  const headSnippets = await getHeadSnippets();
 
   const recaptchaSiteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY;
 
@@ -46,7 +66,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
         />
-        <CodeInjector snippets={headSnippets ?? []} />
+        <CodeInjector snippets={headSnippets} />
       </head>
       <body className="min-h-full flex flex-col font-body text-sm sm:text-base lg:text-lg selection:bg-caffeine-accent selection:text-white">
         {children}

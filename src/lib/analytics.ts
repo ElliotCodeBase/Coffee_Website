@@ -2,7 +2,7 @@ export type Granularity = "daily" | "weekly" | "monthly" | "yearly";
 
 export type ChartPoint = { label: string; count: number };
 
-// How many buckets to show per granularity.
+/* Number of data points to show for each granularity level. */
 const BUCKET_COUNT: Record<Granularity, number> = {
   daily: 30,
   weekly: 12,
@@ -41,12 +41,10 @@ function bucketLabel(key: string, granularity: Granularity): string {
   return key;
 }
 
-/**
- * Buckets raw visit timestamps into fixed-width time buckets for charting,
- * always returning exactly BUCKET_COUNT[granularity] points (zero-filled
- * for buckets with no visits) so the chart never looks broken on a quiet
- * day/week/month.
- */
+/* Group visit timestamps into time buckets for display in a chart.
+   Always return exactly BUCKET_COUNT[granularity] data points. Fill
+   empty buckets with zero so the chart does not appear broken on days
+   or weeks with no visits. */
 export function aggregateVisits(timestamps: string[], granularity: Granularity): ChartPoint[] {
   const counts = new Map<string, number>();
   for (const ts of timestamps) {

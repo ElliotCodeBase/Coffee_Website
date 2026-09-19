@@ -14,8 +14,12 @@ create extension if not exists "pgcrypto";
 -- default now means any table created after this line — including ones
 -- added later, or if this schema is ever re-run after a schema reset —
 -- automatically gets the grant without needing to remember it per table.
-alter default privileges in schema public grant select, insert, update, delete on tables to anon, authenticated, service_role;
-alter default privileges in schema public grant usage, select on sequences to anon, authenticated, service_role;
+-- NOTE: anon is deliberately NOT given blanket DML here. A future table
+-- created without RLS would otherwise be writable by anyone holding the
+-- public anon key. anon gets exactly what the public site needs, granted
+-- explicitly at the bottom of this file.
+alter default privileges in schema public grant select, insert, update, delete on tables to authenticated, service_role;
+alter default privileges in schema public grant usage, select on sequences to authenticated, service_role;
 grant usage on schema public to anon, authenticated, service_role;
 
 -- ------------------------------------------------------------
@@ -28,19 +32,46 @@ create type user_role as enum ('admin', 'developer', 'staff');
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text,
-  role user_role not null default 'admin',
+  -- Least privilege by default. Roles are promoted explicitly by the
+  -- invite flows, which run with the service role key.
+  role user_role not null default 'staff',
+  -- Exactly one profile may be the Main Admin (see the unique partial
+  -- index below); that account cannot be deleted until the role is
+  -- transferred to another admin.
+  is_main_admin boolean not null default false,
   created_at timestamptz not null default now()
 );
 
+create unique index profiles_one_main_admin_idx
+  on public.profiles (is_main_admin)
+  where (is_main_admin = true);
+
 -- Auto-create a profile row whenever a new auth user signs up
-create function public.handle_new_user()
-returns trigger as $$
+-- New users default to the LEAST privileged role. Hard-coding 'admin'
+-- here means any successful /auth/v1/signup with the public anon key
+-- creates a site administrator. Both invite flows set the real role
+-- straight after the invite using the service role key.
+-- The exception handler keeps profile bookkeeping from ever aborting the
+-- auth.users INSERT itself.
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
 begin
   insert into public.profiles (id, full_name, role)
-  values (new.id, new.raw_user_meta_data->>'full_name', 'admin');
+  values (new.id, new.raw_user_meta_data->>'full_name', 'staff')
+  on conflict (id) do nothing;
   return new;
+exception
+  when others then
+    raise warning 'handle_new_user failed for %: %', new.id, sqlerrm;
+    return new;
 end;
-$$ language plpgsql security definer;
+$$;
+
+revoke all on function public.handle_new_user() from public, anon, authenticated;
 
 create trigger on_auth_user_created
   after insert on auth.users
@@ -123,6 +154,10 @@ create table public.contact_submissions (
   message text not null,
   ip_address text,
   status text not null default 'new', -- new | read | archived
+  -- Result of the notification email: pending | sent | failed | skipped
+  -- (NULL on rows that predate the column). See migration_add_contact_email_status.sql
+  email_status text check (email_status is null or email_status in ('pending', 'sent', 'failed', 'skipped')),
+  email_error text,
   created_at timestamptz not null default now()
 );
 
@@ -197,14 +232,34 @@ alter table public.site_visits enable row level security;
 alter table public.image_history enable row level security;
 
 -- Helper: check current user's role
-create function public.current_user_role()
-returns user_role as $$
+-- `set search_path` is required on a SECURITY DEFINER function: without
+-- it a caller can shadow `profiles` and control what this returns.
+create or replace function public.current_user_role()
+returns user_role
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
   select role from public.profiles where id = auth.uid();
-$$ language sql stable security definer;
+$$;
+
+-- EXECUTE must stay granted to anon. The public read policies on
+-- nav_links and menu_items call this function inside their USING clause,
+-- and RLS policy expressions are evaluated as the CURRENT role — so an
+-- anonymous visitor needs EXECUTE or the public site fails to render with
+-- "permission denied for function current_user_role".
+--
+-- This is safe: auth.uid() is NULL for anon, so the function returns NULL.
+-- It exposes nothing and cannot return another user's role. The real
+-- hardening here is `set search_path` above, which stops a caller from
+-- shadowing `profiles` to control what the function returns.
+grant execute on function public.current_user_role() to anon, authenticated, service_role;
 
 -- Profiles: users can read their own profile; devs can read all
-create policy "read own profile" on public.profiles
-  for select using (auth.uid() = id or public.current_user_role() = 'developer');
+create policy "admin read team profiles" on public.profiles
+  for select to authenticated
+  using (auth.uid() = id or public.current_user_role() in ('admin', 'developer'));
 
 -- Site settings: public read, admin+dev write
 create policy "public read site_settings" on public.site_settings
@@ -233,7 +288,12 @@ create policy "anyone can submit contact form" on public.contact_submissions
 create policy "admin read contact_submissions" on public.contact_submissions
   for select using (public.current_user_role() in ('admin','developer','staff'));
 create policy "admin update contact_submissions" on public.contact_submissions
-  for update using (public.current_user_role() in ('admin','developer'));
+  for update to authenticated
+  using (public.current_user_role() in ('admin','developer','staff'))
+  with check (public.current_user_role() in ('admin','developer','staff'));
+create policy "admin delete contact_submissions" on public.contact_submissions
+  for delete to authenticated
+  using (public.current_user_role() in ('admin','developer'));
 
 -- Custom code snippets: DEVELOPER ONLY (never client-admin — this is raw code injection)
 create policy "developer only custom_code" on public.custom_code_snippets
@@ -251,8 +311,9 @@ create policy "anyone can log a visit" on public.site_visits
   for insert
   to anon, authenticated
   with check (true);
-create policy "only admins can view visits" on public.site_visits
-  for select using (public.current_user_role() = 'admin');
+create policy "admin and staff can view visits" on public.site_visits
+  for select to authenticated
+  using (public.current_user_role() in ('admin','staff','developer'));
 
 -- Image history: same access as site_settings itself (admin/developer
 -- only) — staff can't reach the Site Info page in the first place.
@@ -311,5 +372,11 @@ update public.menu_items set is_new = true where name = 'Iced Matcha Latte';
 -- TABLE statements. Cheap to run twice, expensive to silently omit —
 -- this exact gap (RLS policies with no underlying GRANT) is what broke
 -- every menu/login query on the live site after an earlier reset.
-grant select, insert, update, delete on all tables in schema public to anon, authenticated, service_role;
-grant usage, select on all sequences in schema public to anon, authenticated, service_role;
+grant select, insert, update, delete on all tables in schema public to authenticated, service_role;
+grant usage, select on all sequences in schema public to authenticated, service_role;
+
+-- anon: read public content, write a contact message or a visit row. That's all.
+grant select on public.site_settings, public.theme_settings, public.nav_links,
+                public.menu_items, public.custom_code_snippets to anon;
+grant insert on public.contact_submissions to anon;
+grant insert on public.site_visits to anon;

@@ -7,11 +7,10 @@ export interface CurrentUser {
   profile: Profile | null;
 }
 
-/**
- * Returns the currently authenticated user plus their profile (role, name).
- * Returns null if not authenticated. Route protection itself happens in
- * middleware (proxy.ts) — this is for reading identity within pages.
- */
+/* Return the authenticated user and their profile (role and name).
+   Return null if the user is not authenticated.
+   Route protection happens in the middleware (proxy.ts). Use this
+   function to read the user's identity inside pages and layouts. */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   const supabase = await createClient();
   const {
