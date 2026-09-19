@@ -9,15 +9,13 @@ export interface ActionResult {
   error?: string;
 }
 
-
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/**
- * Server actions are publicly reachable endpoints — being unable to load
- * /admin/site-info in the UI does not stop anyone from POSTing to the
- * action directly. RLS blocks the write too, but failing here gives a
- * clear error instead of a silent "Failed to save".
- */
+/* Verify that the current user can edit site settings.
+   Server actions are public endpoints. A user who cannot open
+   /admin/site-info in the browser can still POST to a server action
+   directly. Row Level Security also blocks the write, but this check
+   returns a clear error message instead of a silent failure. */
 async function assertCanEditSite(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user },
@@ -30,11 +28,10 @@ async function assertCanEditSite(supabase: Awaited<ReturnType<typeof createClien
   return { ok: true as const, userId: user.id };
 }
 
-/**
- * Fields that end up in an href/src attribute on the public site. Without
- * this, an `javascript:...` value saved here becomes stored XSS for every
- * visitor who clicks a social icon.
- */
+/* Fields that are used in an href or src attribute on the public site.
+   Without this check, saving javascript:... to one of these fields
+   creates a stored XSS vulnerability for every visitor who clicks
+   the link or loads the image. */
 const URL_FIELDS = new Set([
   "logo_url",
   "hero_image_url",
@@ -55,12 +52,32 @@ function isSafeExternalUrl(value: string): boolean {
   }
 }
 
-/** Allows in-page anchors and same-site paths, plus http(s) URLs. */
+/* Allow in-page anchors, same-site paths, and http(s) URLs. */
 function isSafeLinkTarget(value: string): boolean {
   const trimmed = value.trim();
   if (trimmed.startsWith("#")) return /^#[\w-]*$/.test(trimmed);
   if (trimmed.startsWith("/")) return !trimmed.startsWith("//") && !trimmed.includes("\\");
   return isSafeExternalUrl(trimmed);
+}
+
+/* Per-field length caps so a single save can't store megabytes of text, and
+   the email field must look like an address (it is rendered as a mailto: link). */
+const EMAIL_RE = /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/;
+const MAX_LEN: Record<string, number> = { about_body: 5000, hero_subtext: 1000, meta_description: 320 };
+const URL_MAX_LEN = 2048;
+const DEFAULT_MAX_LEN = 300;
+
+/* The map field is rendered inside an <iframe>. Limit it to https URLs on
+   the map providers the site is built for, so it can't frame an arbitrary
+   third-party page inside the contact section. */
+const MAP_HOSTS = new Set(["www.google.com", "google.com", "maps.google.com", "www.openstreetmap.org", "openstreetmap.org"]);
+function isAllowedMapEmbed(value: string): boolean {
+  try {
+    const u = new URL(value);
+    return u.protocol === "https:" && MAP_HOSTS.has(u.hostname);
+  } catch {
+    return false;
+  }
 }
 
 const EDITABLE_FIELDS = [
@@ -89,14 +106,13 @@ const EDITABLE_FIELDS = [
   "meta_description",
 ] as const;
 
-// Fields whose *previous* value gets archived to image_history whenever
-// they change, so the client can revert to an older logo/hero/about
-// image later instead of having to re-upload it from scratch.
+/* Save the old value of an image field to image_history before it is
+   replaced. This lets the user restore a previous image without
+   uploading it again. */
 const TRACKED_IMAGE_FIELDS = ["logo_url", "hero_image_url", "about_image_url"] as const;
 
-// Keep at most this many old versions per field — otherwise a client who
-// changes their hero image every week for a year ends up with an
-// ever-growing table for no real benefit.
+/* Keep at most this many old versions per field. This prevents the
+   image_history table from growing without limit. */
 const MAX_HISTORY_PER_FIELD = 8;
 
 async function archiveOldImage(
@@ -104,15 +120,15 @@ async function archiveOldImage(
   fieldName: (typeof TRACKED_IMAGE_FIELDS)[number],
   oldUrl: string | null
 ) {
-  if (!oldUrl) return; // nothing to archive — field was already empty
+  if (!oldUrl) return;
 
   const { error } = await supabase.from("image_history").insert({ field_name: fieldName, image_url: oldUrl });
   if (error) {
     console.error(`archiveOldImage (${fieldName}) error:`, error.message);
-    return; // don't let history bookkeeping block the actual save
+    return;
   }
 
-  // Trim anything beyond the cap, oldest first.
+  /* Delete old entries beyond the limit, starting with the oldest. */
   const { data: rows } = await supabase
     .from("image_history")
     .select("id")
@@ -129,7 +145,7 @@ export async function updateSiteSettings(formData: FormData): Promise<ActionResu
   const supabase = await createClient();
 
   const check = await assertCanEditSite(supabase);
-  if (!check.ok) return { error: "You don't have permission to edit site settings." };
+  if (!check.ok) return { error: "You do not have permission to edit site settings." };
   const user = { id: check.userId };
 
   const update: Record<string, string | null> = {};
@@ -138,14 +154,25 @@ export async function updateSiteSettings(formData: FormData): Promise<ActionResu
     const stringValue = value === null ? "" : String(value).trim();
 
     if (stringValue && URL_FIELDS.has(field) && !isSafeExternalUrl(stringValue)) {
-      return { error: `“${field.replace(/_/g, " ")}” must be a full http:// or https:// URL.` };
+      return { error: `"${field.replace(/_/g, " ")}" must be a full http:// or https:// URL.` };
+    }
+
+    const maxLen = URL_FIELDS.has(field) ? URL_MAX_LEN : (MAX_LEN[field] ?? DEFAULT_MAX_LEN);
+    if (stringValue.length > maxLen) {
+      return { error: `"${field.replace(/_/g, " ")}" is too long (maximum ${maxLen} characters).` };
+    }
+    if (field === "email" && stringValue && !EMAIL_RE.test(stringValue)) {
+      return { error: "Enter a valid email address." };
+    }
+    if (field === "map_embed_url" && stringValue && !isAllowedMapEmbed(stringValue)) {
+      return { error: "The map link must be an https:// Google Maps or OpenStreetMap embed URL." };
     }
 
     update[field] = stringValue === "" ? null : stringValue;
   }
 
-  // Archive whichever tracked images are actually about to change,
-  // before overwriting them, so they can be restored later.
+  /* Read the current values before overwriting. Archive any image fields
+     that are about to change so the user can restore them later. */
   const { data: current } = await supabase.from("site_settings").select("*").eq("id", 1).single();
 
   if (current) {
@@ -173,27 +200,24 @@ export async function updateSiteSettings(formData: FormData): Promise<ActionResu
   return { success: true };
 }
 
-/**
- * Reverts one image field (logo/hero/about) back to a previous value
- * from image_history. The image that's currently active gets archived
- * too before being replaced, so restoring doesn't destroy the ability
- * to go forward again later.
- */
+/* Revert one image field (logo, hero, or about) to a value from
+   image_history. The current value is archived first so the user can
+   restore it again if needed. */
 export async function restoreSiteImage(
   fieldName: (typeof TRACKED_IMAGE_FIELDS)[number],
   imageUrl: string
 ): Promise<ActionResult> {
   if (!TRACKED_IMAGE_FIELDS.includes(fieldName)) {
-    return { error: "That field can't be restored this way." };
+    return { error: "That field cannot be restored this way." };
   }
 
   if (!isSafeExternalUrl(imageUrl)) {
-    return { error: "That image URL isn't valid." };
+    return { error: "That image URL is not valid." };
   }
 
   const supabase = await createClient();
   const check = await assertCanEditSite(supabase);
-  if (!check.ok) return { error: "You don't have permission to edit site settings." };
+  if (!check.ok) return { error: "You do not have permission to edit site settings." };
   const user = { id: check.userId };
 
   const { data: current } = await supabase.from("site_settings").select("*").eq("id", 1).single();
@@ -225,25 +249,26 @@ export async function updateNavLinks(links: { id: string; label: string; href: s
   const supabase = await createClient();
 
   const check = await assertCanEditSite(supabase);
-  if (!check.ok) return { error: "You don't have permission to edit navigation." };
+  if (!check.ok) return { error: "You do not have permission to edit navigation." };
 
   if (!Array.isArray(links) || links.length > 50) {
     return { error: "Too many navigation links." };
   }
 
-  // Validate everything BEFORE writing anything, so a bad row can't leave
-  // the nav half-updated.
+  /* Validate all links before writing any of them. This prevents a bad
+     entry from leaving the navigation in a partially updated state. */
   for (const link of links) {
     if (!UUID_RE.test(String(link?.id ?? ""))) {
       return { error: "Invalid navigation link." };
     }
     const label = String(link.label ?? "").trim();
     if (!label || label.length > 60) {
-      return { error: "Each navigation label must be 1–60 characters." };
+      return { error: "Each navigation label must be between 1 and 60 characters." };
     }
-    // The old version wrote href straight through. A value of
-    // `javascript:fetch(...)` saved here rendered as a clickable link in
-    // the public header for every visitor — stored XSS.
+    /* The previous version wrote the href value without validation.
+       A value such as javascript:fetch(...) saved here would appear as a
+       clickable link in the public header for every visitor. This is a
+       stored XSS vulnerability. Validate the href before saving. */
     if (!isSafeLinkTarget(String(link.href ?? ""))) {
       return { error: "Links must be an #anchor, a /path, or a full http(s):// URL." };
     }

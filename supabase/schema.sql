@@ -154,6 +154,10 @@ create table public.contact_submissions (
   message text not null,
   ip_address text,
   status text not null default 'new', -- new | read | archived
+  -- Result of the notification email: pending | sent | failed | skipped
+  -- (NULL on rows that predate the column). See migration_add_contact_email_status.sql
+  email_status text check (email_status is null or email_status in ('pending', 'sent', 'failed', 'skipped')),
+  email_error text,
   created_at timestamptz not null default now()
 );
 
@@ -240,8 +244,17 @@ as $$
   select role from public.profiles where id = auth.uid();
 $$;
 
-revoke all on function public.current_user_role() from public, anon, authenticated;
-grant execute on function public.current_user_role() to authenticated, service_role;
+-- EXECUTE must stay granted to anon. The public read policies on
+-- nav_links and menu_items call this function inside their USING clause,
+-- and RLS policy expressions are evaluated as the CURRENT role — so an
+-- anonymous visitor needs EXECUTE or the public site fails to render with
+-- "permission denied for function current_user_role".
+--
+-- This is safe: auth.uid() is NULL for anon, so the function returns NULL.
+-- It exposes nothing and cannot return another user's role. The real
+-- hardening here is `set search_path` above, which stops a caller from
+-- shadowing `profiles` to control what the function returns.
+grant execute on function public.current_user_role() to anon, authenticated, service_role;
 
 -- Profiles: users can read their own profile; devs can read all
 create policy "admin read team profiles" on public.profiles

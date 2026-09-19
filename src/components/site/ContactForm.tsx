@@ -13,13 +13,10 @@ export default function ContactForm() {
   function handleSubmit(formData: FormData) {
     setStatus("idle");
 
-    // Honeypot: real users never fill this hidden field. Bots often do.
-    if (formData.get("website")) {
-      // Silently "succeed" so bots don't learn the honeypot was hit.
-      setStatus("success");
-      return;
-    }
-
+    // Honeypot: real users never fill this hidden field. It is sent to the
+    // server, which does the actual check — a bot that posts directly to the
+    // API would skip any client-side-only test. The visitor-facing result is
+    // identical either way so bots learn nothing.
     startTransition(async () => {
       // reCAPTCHA runs in its own try/catch, deliberately separate from
       // the actual submission below. A reCAPTCHA failure (invalid site
@@ -47,6 +44,7 @@ export default function ContactForm() {
             email: formData.get("email"),
             topic: formData.get("topic"),
             message: formData.get("message"),
+            website: formData.get("website") || undefined,
             recaptchaToken,
           }),
         });

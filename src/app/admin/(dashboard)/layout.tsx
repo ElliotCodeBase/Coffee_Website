@@ -12,7 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // Middleware already protects /admin/*, but this is a second line of
   // defense in case the layout is ever reached without middleware running
   // (e.g. during certain edge-runtime scenarios).
-  if (!user) {
+  if (!user || !user.profile) {
     redirect("/admin/login");
   }
 

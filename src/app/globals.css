@@ -1,10 +1,9 @@
 @import "tailwindcss";
 
 /*
-  Default brand tokens. These are overridden at runtime by a small
-  <style> block injected from the `theme_settings` table (see
-  ThemeVars.tsx) so the Developer Panel can change colors/fonts
-  without a code deploy.
+  Default brand color and font tokens. The Developer Panel can change
+  these values at runtime without a code deploy. It does this by injecting
+  a <style> block that reads from the theme_settings table. See ThemeVars.tsx.
 */
 :root {
   --caffeine-dark: #1c120c;
@@ -46,47 +45,111 @@ body {
   font-family: var(--font-body);
 }
 
-@keyframes infinite-scroll {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(-50%, 0, 0);
-  }
-}
-
-.animate-infinite-scroll {
-  animation: infinite-scroll 35s linear infinite;
-}
-
-.carousel-track:hover,
-.carousel-track:focus-within {
-  animation-play-state: paused;
-}
-
-@keyframes gentle-float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-14px);
-  }
-}
-
-.animate-gentle-float {
-  animation: gentle-float 5s ease-in-out infinite;
-}
-
-
 /*
-  Motion safety. The header ticker and the floating best-seller showcase
-  are decorative, so they stop entirely when the visitor has asked their
-  OS for reduced motion — the content stays readable either way.
+  Shared side-scroll styles (see components/shared/HScroller.tsx and
+  lib/use-scroll-edges.ts). Kept in the `components` layer on purpose: Tailwind
+  utilities live in a later layer, so a page can still override anything here
+  (for example the admin tab rail turns into a vertical list on large screens
+  with `lg:flex-col lg:overflow-visible`). Un-layered CSS would beat utilities.
 */
-@media (prefers-reduced-motion: reduce) {
-  .animate-infinite-scroll,
-  .animate-gentle-float {
-    animation: none !important;
-    transform: none !important;
+@layer components {
+  .hscroll {
+    position: relative;
+    --hscroll-item: min(78%, 17rem);
+    --hscroll-gap: 1rem;
+  }
+
+  .hscroll__track {
+    display: flex;
+    gap: var(--hscroll-gap);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 0.25rem;
+    scrollbar-width: none;
+    /* Room for the card's shadow so it isn't clipped by the scroller. */
+    padding: 0.5rem 0.25rem 0.75rem;
+    margin: -0.5rem -0.25rem -0.75rem;
+    --fade-start: 0px;
+    --fade-end: 0px;
+  }
+  .hscroll__track::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Edge fade: only on a side that has more to reveal, and only when
+     scrollable (a mask on a non-scrolling element could clip focus rings). */
+  .hscroll[data-scrollable="true"] .hscroll__track {
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent 100%);
+  }
+  .hscroll[data-scrollable="true"][data-start="false"] .hscroll__track {
+    --fade-start: 1.75rem;
+  }
+  .hscroll[data-scrollable="true"][data-end="false"] .hscroll__track {
+    --fade-end: 1.75rem;
+  }
+
+  .hscroll__track:focus-visible {
+    outline: 2px solid var(--caffeine-accent);
+    outline-offset: -2px;
+    border-radius: 0.75rem;
+  }
+
+  .hscroll__item {
+    flex: 0 0 var(--hscroll-item);
+    min-width: 0;
+    scroll-snap-align: start;
+  }
+
+  .hscroll__btn {
+    display: none;
+    position: absolute;
+    top: 50%;
+    z-index: 2;
+    width: 2.5rem;
+    height: 2.5rem;
+    margin-top: -1.25rem;
+    place-items: center;
+    border-radius: 9999px;
+    border: 1px solid color-mix(in srgb, var(--caffeine-dark) 18%, transparent);
+    background: var(--caffeine-cream);
+    color: var(--caffeine-dark);
+    box-shadow: 0 4px 14px rgb(0 0 0 / 0.12);
+    cursor: pointer;
+    transition: opacity 150ms ease, background-color 150ms ease;
+  }
+  .hscroll__btn svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+  .hscroll__btn:hover:not(:disabled) {
+    background: #fff;
+  }
+  .hscroll__btn:focus-visible {
+    outline: 2px solid var(--caffeine-accent);
+    outline-offset: 2px;
+  }
+  .hscroll__btn:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .hscroll__btn--prev {
+    left: -0.5rem;
+  }
+  .hscroll__btn--next {
+    right: -0.5rem;
+  }
+  /* Buttons only where there is a mouse; touch devices swipe. */
+  @media (hover: hover) and (pointer: fine) {
+    .hscroll[data-scrollable="true"] .hscroll__btn {
+      display: grid;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hscroll__track {
+      scroll-behavior: auto;
+    }
   }
 }

@@ -6,6 +6,7 @@ import { createMenuItem, updateMenuItem, deleteMenuItem } from "@/lib/actions/me
 import ImageUploadField from "@/components/admin/ImageUploadField";
 import SaveButton from "@/components/admin/SaveButton";
 import AdminButton from "@/components/admin/AdminButton";
+import AdminModal from "@/components/admin/AdminModal";
 
 const CATEGORY_LABELS: Record<MenuCategory | "all", string> = {
   all: "All Items",
@@ -33,10 +34,7 @@ function MenuItemForm({ item, onDone }: { item?: MenuItem; onDone: () => void })
   }
 
   return (
-    <div className="bg-stone-50 rounded-xl border border-stone-200 p-5 sm:p-6">
-      <h3 className="font-cozy font-bold text-base text-caffeine-dark mb-5">
-        {item ? "Edit item" : "New menu item"}
-      </h3>
+    <div>
       <form action={handleSubmit} className="space-y-5">
         {/* Row 1: Name + Category */}
         <div className="grid sm:grid-cols-2 gap-4">
@@ -157,7 +155,8 @@ function MenuItemForm({ item, onDone }: { item?: MenuItem; onDone: () => void })
           </div>
         )}
 
-        <div className="flex items-center gap-3 pt-1">
+        {/* Sticky so Save is always reachable, however tall the form gets. */}
+        <div className="sticky bottom-0 -mx-5 -mb-5 flex items-center gap-3 border-t border-stone-200 bg-white/95 px-5 py-4 backdrop-blur sm:-mx-6 sm:-mb-5 sm:px-6">
           <SaveButton pending={isPending} label={item ? "Save changes" : "Add item"} />
           <AdminButton type="button" variant="outline" onClick={onDone} disabled={isPending}>
             Cancel
@@ -280,6 +279,11 @@ export default function MenuItemsManager({ items }: { items: MenuItem[] }) {
 
   const filtered =
     category === "all" ? items : items.filter((i) => i.category === category);
+  const editingItem = editingId ? items.find((i) => i.id === editingId) : undefined;
+  const closeEditor = () => {
+    setEditingId(null);
+    setShowNew(false);
+  };
 
   const counts = {
     all: items.length,
@@ -327,17 +331,19 @@ export default function MenuItemsManager({ items }: { items: MenuItem[] }) {
         <AdminButton
           variant="primary"
           onClick={() => {
-            setShowNew((v) => !v);
             setEditingId(null);
+            setShowNew(true);
           }}
         >
-          {showNew ? "✕ Cancel" : "+ Add item"}
+          + Add item
         </AdminButton>
       </div>
 
-      {/* New item form */}
-      {showNew && (
-        <MenuItemForm onDone={() => setShowNew(false)} />
+      {/* Create / edit form — an overlay, so the card grid never changes size */}
+      {(showNew || editingItem) && (
+        <AdminModal title={editingItem ? `Edit “${editingItem.name}”` : "New menu item"} onClose={closeEditor}>
+          <MenuItemForm key={editingItem?.id ?? "new"} item={editingItem} onDone={closeEditor} />
+        </AdminModal>
       )}
 
       {/* Grid */}
@@ -353,24 +359,18 @@ export default function MenuItemsManager({ items }: { items: MenuItem[] }) {
         </div>
       ) : (
         <div className="grid auto-rows-fr sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map((item) =>
-            editingId === item.id ? (
-              <div key={item.id} className="sm:col-span-2 lg:col-span-3 xl:col-span-4">
-                <MenuItemForm item={item} onDone={() => setEditingId(null)} />
-              </div>
-            ) : (
-              <MenuItemCard
-                key={item.id}
-                item={item}
-                onEdit={() => {
-                  setEditingId(item.id);
-                  setShowNew(false);
-                }}
-                onDelete={() => handleDelete(item.id, item.name)}
-                disabled={isPending}
-              />
-            )
-          )}
+          {filtered.map((item) => (
+            <MenuItemCard
+              key={item.id}
+              item={item}
+              onEdit={() => {
+                setShowNew(false);
+                setEditingId(item.id);
+              }}
+              onDelete={() => handleDelete(item.id, item.name)}
+              disabled={isPending}
+            />
+          ))}
         </div>
       )}
     </div>

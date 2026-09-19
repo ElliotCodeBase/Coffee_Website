@@ -1,38 +1,24 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { MenuItem, NavLink, SiteSettings } from "@/types/database";
+import { useEffect, useState } from "react";
+import type { NavLink, SiteSettings } from "@/types/database";
 
-/**
- * Scroll offset (px) at which the header switches to its "condensed"
- * state: the featured ticker collapses, the bar shrinks, and the
- * background goes from translucent to near-solid.
- */
+/* Scroll offset in pixels. When the user scrolls past this value,
+   the header changes to the condensed state. */
 const CONDENSE_AT = 48;
 
 export default function Header({
   navLinks,
   settings,
-  menuItems = [],
 }: {
   navLinks: NavLink[];
   settings: SiteSettings | null;
-  menuItems?: MenuItem[];
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [condensed, setCondensed] = useState(false);
 
-  // Items called out on the ticker and in the floating showcase.
-  const featured = useMemo(
-    () => menuItems.filter((i) => i.is_available && (i.is_best_seller || i.is_new)),
-    [menuItems]
-  );
-  const showcase = featured.find((i) => i.is_best_seller && i.image_url) ?? null;
-
-  // The header animation this restores: the bar reacts to scroll position.
-  // It was lost when Header.tsx was rewritten — the keyframes
-  // (infinite-scroll / gentle-float) were left orphaned in globals.css with
-  // nothing referencing them.
+  /* Update the condensed state when the user scrolls.
+     Use requestAnimationFrame to limit the number of state updates. */
   useEffect(() => {
     let frame = 0;
 
@@ -52,7 +38,7 @@ export default function Header({
     };
   }, []);
 
-  // Lock body scroll while the mobile sheet is open.
+  /* Prevent the page from scrolling while the mobile menu is open. */
   useEffect(() => {
     if (!mobileOpen) return;
     const previous = document.body.style.overflow;
@@ -63,6 +49,7 @@ export default function Header({
   }, [mobileOpen]);
 
   function handleNavClick(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
+    /* Only intercept anchor links. Let external links open normally. */
     if (!href.startsWith("#")) return;
     const target = document.querySelector(href);
     if (!target) return;
@@ -70,9 +57,6 @@ export default function Header({
     target.scrollIntoView({ behavior: "smooth", block: "start" });
     setMobileOpen(false);
   }
-
-  // Duplicated once so the -50% keyframe translate loops seamlessly.
-  const tickerItems = featured.length > 0 ? [...featured, ...featured] : [];
 
   return (
     <header
@@ -82,46 +66,13 @@ export default function Header({
           : "bg-caffeine-dark/70 backdrop-blur-md border-white/5 shadow-none"
       }`}
     >
-      {/* ── Featured ticker — collapses away once you start scrolling ── */}
-      {tickerItems.length > 0 && (
-        <div
-          aria-hidden={condensed}
-          className={`overflow-hidden border-b border-white/5 bg-black/20 transition-[max-height,opacity] duration-500 ease-out ${
-            condensed ? "max-h-0 opacity-0" : "max-h-10 opacity-100"
-          }`}
-        >
-          <div className="relative flex overflow-hidden">
-            <div className="carousel-track animate-infinite-scroll flex shrink-0 items-center gap-8 whitespace-nowrap py-2 pr-8">
-              {tickerItems.map((item, i) => (
-                <span
-                  key={`${item.id}-${i}`}
-                  className="flex items-center gap-2 text-[10px] sm:text-[11px] font-medium tracking-wide text-stone-300"
-                >
-                  <span
-                    className={`text-[8px] sm:text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-sm ${
-                      item.is_best_seller
-                        ? "bg-caffeine-gold/90 text-caffeine-dark"
-                        : "bg-green-500/90 text-white"
-                    }`}
-                  >
-                    {item.is_best_seller ? "Best Seller" : "New"}
-                  </span>
-                  <span className="text-white">{item.name}</span>
-                  <span className="text-stone-400">${Number(item.price).toFixed(2)}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Main bar — shrinks as you scroll ── */}
+      {/* Main navigation bar. Height shrinks when the user scrolls down. */}
       <div
         className={`max-w-screen-2xl mx-auto px-4 sm:px-8 lg:px-12 flex items-center justify-between gap-4 transition-[height] duration-500 ease-out ${
           condensed ? "h-12 sm:h-14 lg:h-16" : "h-14 sm:h-18 lg:h-22"
         }`}
       >
-        {/* Logo / business name */}
+        {/* Logo and business name. Clicking this scrolls to the top of the page. */}
         <a
           href="#hero-header"
           onClick={(e) => handleNavClick(e, "#hero-header")}
@@ -163,7 +114,7 @@ export default function Header({
           </span>
         </a>
 
-        {/* Desktop nav */}
+        {/* Desktop navigation links. */}
         <nav className="hidden md:flex items-center gap-5 lg:gap-9 xl:gap-11 text-sm lg:text-base font-medium text-stone-300 flex-1 justify-center">
           {navLinks.map((link) => (
             <a
@@ -181,45 +132,10 @@ export default function Header({
           ))}
         </nav>
 
-        {/* Floating best-seller showcase. Absolutely positioned so it can
-            hang below the bar without changing the header's height (and so
-            it never shifts the hero's top padding). */}
-        <div className="hidden md:block relative w-32 lg:w-40 shrink-0">
-          {showcase && (
-            <div
-              className={`absolute right-0 top-1/2 -translate-y-1/2 transition-all duration-500 ease-out ${
-                condensed ? "opacity-0 translate-y-2 pointer-events-none" : "opacity-100"
-              }`}
-            >
-              <a
-                href="#menu"
-                onClick={(e) => handleNavClick(e, "#menu")}
-                className="animate-gentle-float flex items-center gap-2.5 rounded-2xl border border-white/15 bg-white/10 py-1.5 pl-1.5 pr-3 backdrop-blur-md transition-colors hover:border-caffeine-gold/60 hover:bg-white/15"
-              >
-                <span className="relative block h-9 w-9 lg:h-10 lg:w-10 shrink-0 overflow-hidden rounded-xl bg-caffeine-card">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={showcase.image_url!}
-                    alt=""
-                    aria-hidden="true"
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-cover object-center"
-                  />
-                </span>
-                <span className="flex flex-col leading-tight min-w-0">
-                  <span className="text-[8px] font-bold uppercase tracking-widest text-caffeine-gold">
-                    Best Seller
-                  </span>
-                  <span className="truncate text-[11px] font-semibold text-white max-w-[72px] lg:max-w-[88px]">
-                    {showcase.name}
-                  </span>
-                </span>
-              </a>
-            </div>
-          )}
-        </div>
+        {/* Right-hand spacer. Keeps the logo centered on desktop. */}
+        <div className="hidden md:block w-32 lg:w-40 shrink-0" />
 
-        {/* Mobile hamburger */}
+        {/* Mobile hamburger button. */}
         <button
           onClick={() => setMobileOpen((v) => !v)}
           aria-label="Toggle Navigation Menu"
@@ -239,7 +155,7 @@ export default function Header({
         </button>
       </div>
 
-      {/* Mobile backdrop */}
+      {/* Mobile backdrop. Clicking this closes the menu. */}
       <div
         onClick={() => setMobileOpen(false)}
         aria-hidden="true"
@@ -248,7 +164,7 @@ export default function Header({
         }`}
       />
 
-      {/* Mobile dropdown — animated open/close instead of a hard mount */}
+      {/* Mobile navigation menu. Animates open and closed. */}
       <div
         id="mobile-nav"
         className={`md:hidden overflow-hidden border-t border-white/10 bg-caffeine-dark/95 backdrop-blur-md transition-[max-height,opacity] duration-300 ease-out ${
@@ -267,7 +183,6 @@ export default function Header({
               {link.label}
             </a>
           ))}
-          {/* No Staff Portal link — access via /admin/login directly */}
         </div>
       </div>
     </header>

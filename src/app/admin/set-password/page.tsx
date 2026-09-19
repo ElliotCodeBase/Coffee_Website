@@ -17,20 +17,15 @@ export default function SetPasswordPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
 
-  // IMPORTANT: this page must not trust whatever session happens to already
-  // be sitting in the browser's cookies. The Supabase browser client
-  // (@supabase/ssr) stores its session in cookies, which are shared across
-  // every tab of the same browser for this domain — so if an admin already
-  // has a tab open and logged in, calling `getSession()` here can resolve
-  // with THEIR session before the invite link's own tokens have been
-  // exchanged, since that exchange happens asynchronously. That race is
-  // what caused setting a staff password to silently land the invited
-  // person in the admin's own session instead of their own.
-  //
-  // The fix: pull the invite's access/refresh tokens directly out of the
-  // URL ourselves and call `setSession()` explicitly, so this page only
-  // ever acts on the session the invite link actually grants — never on
-  // whatever else happens to be in cookies from another tab.
+  /* Read the invite tokens from the URL and call setSession() directly.
+     Do not use getSession() here. The browser stores sessions in cookies
+     that are shared across all tabs on this domain. If an admin is already
+     logged in on another tab, getSession() returns the admin session before
+     the invite tokens are exchanged. That causes the invited user to
+     accidentally operate inside the admin session instead of their own.
+     Calling setSession() with the tokens from the invite URL avoids this
+     problem entirely. The session on this page always belongs to the
+     invited user, regardless of what other tabs are open. */
   useEffect(() => {
     let cancelled = false;
 
@@ -48,41 +43,43 @@ export default function SetPasswordPage() {
         return;
       }
 
-      // Classic invite-link format: tokens land in the URL hash.
+      /* Classic invite link format: tokens are in the URL hash. */
       if (accessToken && refreshToken) {
         const { error } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         });
-        // Clear the hash so the tokens don't linger in browser history.
+        /* Remove the tokens from the URL. This prevents them from
+           remaining in the browser history after the page loads. */
         window.history.replaceState(null, "", window.location.pathname);
         if (cancelled) return;
         if (error) {
-          setCheckError("This invite link is invalid or has expired. Ask whoever invited you to send a new one.");
+          setCheckError("This invite link is invalid or has expired. Ask the person who invited you to send a new link.");
           return;
         }
         setReady(true);
         return;
       }
 
-      // Newer PKCE-style invite links pass a one-time `code` query param.
+      /* PKCE-style invite links use a one-time code query parameter. */
       if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code);
+        /* Remove the code from the URL after it is used. */
         window.history.replaceState(null, "", window.location.pathname);
         if (cancelled) return;
         if (error) {
-          setCheckError("This invite link is invalid or has expired. Ask whoever invited you to send a new one.");
+          setCheckError("This invite link is invalid or has expired. Ask the person who invited you to send a new link.");
           return;
         }
         setReady(true);
         return;
       }
 
-      // No invite tokens in the URL at all — this page was opened directly,
-      // not from a fresh invite link. Never fall back to an ambient session
-      // here (that's exactly the bleed-through this page exists to avoid).
+      /* No invite tokens are present in the URL. The user opened this page
+         directly, not from an invite email. Do not fall back to an existing
+         session. Doing so would allow the user to act as another person. */
       if (!cancelled) {
-        setCheckError("This invite link is invalid or has expired. Ask whoever invited you to send a new one.");
+        setCheckError("This invite link is invalid or has expired. Ask the person who invited you to send a new link.");
       }
     }
 
@@ -101,7 +98,7 @@ export default function SetPasswordPage() {
       return;
     }
     if (password !== confirm) {
-      setSubmitError("Passwords don't match.");
+      setSubmitError("Passwords do not match.");
       return;
     }
 
@@ -112,7 +109,12 @@ export default function SetPasswordPage() {
         setSubmitError(error.message || "Failed to set password. Please try again.");
         return;
       }
-      router.push("/admin");
+      /* Sign the user out after the password is set. This invalidates the
+         invite session so the same invite link cannot be used again.
+         Then redirect the user to the public home page. */
+      supabase.auth.signOut().then(() => {
+        router.push("/");
+      });
     });
   }
 

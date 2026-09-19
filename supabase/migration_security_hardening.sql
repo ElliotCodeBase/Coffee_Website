@@ -46,8 +46,17 @@ as $$
   select role from public.profiles where id = auth.uid();
 $$;
 
-revoke all on function public.current_user_role() from public, anon, authenticated;
-grant execute on function public.current_user_role() to authenticated, service_role;
+-- EXECUTE must stay granted to anon. The public read policies on
+-- nav_links and menu_items call this function inside their USING clause,
+-- and RLS policy expressions are evaluated as the CURRENT role — so an
+-- anonymous visitor needs EXECUTE or the public site fails to render with
+-- "permission denied for function current_user_role".
+--
+-- This is safe: auth.uid() is NULL for anon, so the function returns NULL.
+-- It exposes nothing and cannot return another user's role. The real
+-- hardening here is `set search_path` above, which stops a caller from
+-- shadowing `profiles` to control what the function returns.
+grant execute on function public.current_user_role() to anon, authenticated, service_role;
 
 -- PRIVILEGE ESCALATION FIX.
 -- The previous trigger hard-coded role 'admin' for every new auth user.
@@ -148,6 +157,23 @@ grant select, insert, update, delete on all tables in schema public
   to authenticated, service_role;
 grant usage, select on all sequences in schema public
   to authenticated, service_role;
+
+-- ── 8. Sanity check as the anonymous role ───────────────────────────────
+-- The public site reads these four tables with the anon key. If any of
+-- them raise here, the homepage will fail to render.
+do $$
+declare
+  n int;
+begin
+  set local role anon;
+  select count(*) into n from public.nav_links;
+  select count(*) into n from public.menu_items;
+  select count(*) into n from public.site_settings;
+  select count(*) into n from public.theme_settings;
+  reset role;
+  raise notice 'anon read check passed';
+end;
+$$;
 
 -- ============================================================
 -- VERIFICATION

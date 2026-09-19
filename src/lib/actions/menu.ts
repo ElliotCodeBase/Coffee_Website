@@ -12,12 +12,10 @@ export interface ActionResult {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MENU_ROLES = ["admin", "developer", "staff"];
 
-/**
- * Server actions are public endpoints — not being able to open /admin/menu
- * does not stop anyone from calling these directly. RLS is the real
- * boundary, but checking here turns a silent failure into a clear error
- * and keeps the check next to the code that needs it.
- */
+/* Verify that the current user can manage menu items.
+   Server actions are public endpoints. A user who cannot open /admin/menu
+   can still POST to these actions directly. Row Level Security also blocks
+   the write, but this check returns a clear error message. */
 async function assertCanManageMenu(supabase: Awaited<ReturnType<typeof createClient>>) {
   const {
     data: { user },
@@ -35,16 +33,16 @@ function parseCategory(value: FormDataEntryValue | null): MenuCategory {
 export async function createMenuItem(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
   if (!(await assertCanManageMenu(supabase))) {
-    return { error: "You don't have permission to manage the menu." };
+    return { error: "You do not have permission to manage the menu." };
   }
 
   const price = Number(formData.get("price"));
   if (!Number.isFinite(price) || price < 0 || price > 9999.99) {
-    return { error: "Please enter a valid price between 0 and 9999.99." };
+    return { error: "Enter a valid price between 0 and 9999.99." };
   }
 
   const name = String(formData.get("name") || "").trim();
-  if (!name || name.length > 120) return { error: "Name is required (max 120 characters)." };
+  if (!name || name.length > 120) return { error: "Name is required (maximum 120 characters)." };
 
   const { error } = await supabase.from("menu_items").insert([
     {
@@ -76,16 +74,16 @@ export async function updateMenuItem(id: string, formData: FormData): Promise<Ac
 
   const supabase = await createClient();
   if (!(await assertCanManageMenu(supabase))) {
-    return { error: "You don't have permission to manage the menu." };
+    return { error: "You do not have permission to manage the menu." };
   }
 
   const price = Number(formData.get("price"));
   if (!Number.isFinite(price) || price < 0 || price > 9999.99) {
-    return { error: "Please enter a valid price between 0 and 9999.99." };
+    return { error: "Enter a valid price between 0 and 9999.99." };
   }
 
   const name = String(formData.get("name") || "").trim();
-  if (!name || name.length > 120) return { error: "Name is required (max 120 characters)." };
+  if (!name || name.length > 120) return { error: "Name is required (maximum 120 characters)." };
 
   const { error } = await supabase
     .from("menu_items")
@@ -119,7 +117,7 @@ export async function deleteMenuItem(id: string): Promise<ActionResult> {
 
   const supabase = await createClient();
   if (!(await assertCanManageMenu(supabase))) {
-    return { error: "You don't have permission to manage the menu." };
+    return { error: "You do not have permission to manage the menu." };
   }
 
   const { error } = await supabase.from("menu_items").delete().eq("id", id);

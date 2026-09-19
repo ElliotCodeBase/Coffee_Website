@@ -1,83 +1,84 @@
 # Security Checklist
 
-Status of each item as shipped, plus what you still need to do before going live.
+This document lists what is already implemented and what you must do before the site goes live.
 
-## ✅ Already implemented
+---
 
-- **HTTPS/SSL** — automatic on Vercel and Supabase; nothing to configure.
-- **Auth** — Supabase Auth handles password hashing (bcrypt) and session
-  tokens (JWT, httpOnly cookies via `@supabase/ssr`). No custom password
-  logic in this codebase.
-- **Role-based access control** — enforced at three independent layers:
-  1. `src/proxy.ts` (middleware) — redirects unauthenticated/wrong-role
-     requests before they reach a page.
-  2. Layout-level checks (`src/app/admin/(dashboard)/layout.tsx`,
-     `.../developer/layout.tsx`) — redirect again server-side.
-  3. **Postgres Row Level Security** (`supabase/schema.sql`) — the database
-     itself refuses writes from the wrong role, even if the above two layers
-     had a bug. This is the most important layer; don't remove it.
-- **Input validation** — contact form validated with Zod (`src/app/api/contact/route.ts`)
-  before touching the database.
-- **Spam protection** — honeypot field (invisible to humans, easy for
-  bots to trip) + optional reCAPTCHA v3 score-based verification.
-- **Rate limiting** — contact form limited to 5 submissions per IP per
-  10 minutes (in-memory; see caveat below).
-- **Secrets management** — all API keys/secrets read from environment
-  variables (`.env.local` locally, dashboard env vars on Vercel), never
-  hardcoded. `SUPABASE_SERVICE_ROLE_KEY` is never exposed to the browser
-  (no `NEXT_PUBLIC_` prefix) and is only used in server-only code
-  (`createAdminClient()` in `src/lib/supabase/server.ts`).
-- **Upload validation** — file type and size checked server-side before
-  storage upload (`src/lib/actions/upload.ts`), not just in the browser.
-- **No SQL injection surface** — all queries go through the Supabase
-  client's parameterized query builder; no raw SQL string concatenation
-  anywhere in application code.
+## Already Implemented
 
-## ⚠️ Caveats to know about
+**HTTPS and SSL**
+Vercel and Supabase provide HTTPS automatically. No configuration is needed.
 
-- **In-memory rate limiting resets on cold start.** Vercel serverless
-  functions don't share memory across instances, so the contact-form rate
-  limiter is a soft speed bump, not a hard guarantee. For real protection:
-  - Add [Upstash Redis](https://upstash.com) (has a free tier) and swap the
-    `Map` in `src/app/api/contact/route.ts` for a Redis-backed limiter, **or**
-  - Turn on [Vercel Firewall](https://vercel.com/docs/security/vercel-firewall)
-    rules, which rate-limit at the edge before requests even reach your code.
-- **Custom code injection (`custom_code_snippets`) has no sandboxing.**
-  This is by design — it's meant for things like Google Analytics that need
-  full page access — but it means a compromised developer account can inject
-  arbitrary JavaScript into the live site. Keep the list of developer-role
-  accounts small and use strong, unique passwords for those accounts.
-- **Privacy/Terms pages are placeholders.** Replace `/src/app/privacy/page.tsx`
-  and `/src/app/terms/page.tsx` with real policies before launch — see the
-  in-page notes for generator/lawyer suggestions.
+**Authentication**
+Supabase Auth handles password hashing (bcrypt) and session tokens (JWT, httpOnly cookies via `@supabase/ssr`). This codebase contains no custom password logic.
 
-## 🔲 Before you launch — action items
+**Role-Based Access Control**
+Three independent layers enforce access control:
 
-1. **Set all production environment variables** in Vercel (see
-   `DEPLOYMENT.md`) — especially `SUPABASE_SERVICE_ROLE_KEY`,
-   `RESEND_API_KEY`, and `RECAPTCHA_SECRET_KEY`.
-2. **Create your first developer account.** Sign up through Supabase Auth
-   (or use the invite flow at `/admin/developer/users` once you have one
-   developer bootstrapped), then run this SQL once in the Supabase SQL
-   Editor to promote it:
+1. `src/proxy.ts` (middleware) — Redirects unauthenticated requests and requests from the wrong role before they reach a page.
+2. Layout-level checks (`src/app/admin/(dashboard)/layout.tsx` and `.../developer/layout.tsx`) — Redirect again on the server side.
+3. **Postgres Row Level Security** (`supabase/schema.sql`) — The database rejects writes from the wrong role, even if both layers above have a bug. This is the most important layer. Do not remove it.
+
+**Input Validation**
+The contact form is validated with Zod in `src/app/api/contact/route.ts` before any database write.
+
+**Spam Protection**
+A honeypot field (invisible to humans, visible to bots) blocks automated submissions. reCAPTCHA v3 score verification is optional.
+
+**Rate Limiting**
+The contact form allows 5 submissions per IP address per 10 minutes. See the caveat below about in-memory rate limiting.
+
+**Secrets Management**
+All API keys and secrets are read from environment variables. They are never hardcoded. `SUPABASE_SERVICE_ROLE_KEY` is never sent to the browser. It has no `NEXT_PUBLIC_` prefix and is used only in server-side code (`createAdminClient()` in `src/lib/supabase/server.ts`).
+
+**Upload Validation**
+File type and size are checked on the server before any storage upload (`src/lib/actions/upload.ts`). The browser-side check alone is not sufficient.
+
+**No SQL Injection**
+All queries use the Supabase client's parameterized query builder. There is no raw SQL string concatenation in application code.
+
+---
+
+## Known Limitations
+
+**In-Memory Rate Limiting**
+The contact form rate limiter resets when a Vercel serverless function restarts. Instances do not share memory. The limiter slows down abuse but does not stop a determined attacker.
+
+To add strong rate limiting, choose one of these options:
+- Add [Upstash Redis](https://upstash.com) (free tier available). Replace the `Map` in `src/app/api/contact/route.ts` with a Redis-backed limiter.
+- Enable [Vercel Firewall](https://vercel.com/docs/security/vercel-firewall) rules. These run at the edge before requests reach your code.
+
+**Custom Code Injection**
+The `custom_code_snippets` feature has no sandboxing. This is intentional. It supports third-party scripts such as Google Analytics that need full page access. A compromised developer account can inject arbitrary JavaScript into the live site. Keep the number of developer-role accounts small. Use strong, unique passwords for those accounts.
+
+**Placeholder Legal Pages**
+`/src/app/privacy/page.tsx` and `/src/app/terms/page.tsx` contain placeholder text. Replace them with real policies before launch.
+
+---
+
+## Pre-Launch Action Items
+
+Complete all steps below before the site goes live.
+
+1. **Set all production environment variables** in Vercel. See `DEPLOYMENT.md`. Pay attention to `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, and `RECAPTCHA_SECRET_KEY`.
+
+2. **Create your first developer account.** Use the Supabase dashboard or the invite flow at `/admin/developer/users`. Then run this SQL once in the Supabase SQL Editor to set the role:
    ```sql
-   update public.profiles set role = 'developer' where id = 'YOUR-USER-UUID';
+   UPDATE public.profiles SET role = 'developer' WHERE id = 'YOUR-USER-UUID';
    ```
-3. **Rotate any keys** that were ever pasted into chat, committed to git, or
-   shared over email/Slack.
-4. **Enable Supabase's leaked-password protection** (Authentication →
-   Policies in the Supabase dashboard) so users can't set passwords known to
-   be in public breach databases.
-5. **Set up automated backups.** Supabase free tier does daily backups with
-   a limited retention window — confirm this meets your needs, or upgrade
-   if you need point-in-time recovery.
-6. **Review CORS settings** if you ever expose the Supabase API to another
-   domain (not needed for this single-site setup, but worth knowing).
-7. **Consider a Web Application Firewall** (Vercel Firewall or Cloudflare)
-   for bot/DDoS protection beyond what's built into this codebase.
 
-## Reporting a vulnerability
+3. **Rotate any keys** that were pasted into a chat, committed to version control, or shared over email or Slack.
 
-If you (or a future developer) find a security issue in this codebase,
-fix it in a private branch and deploy before disclosing publicly — this is
-a small business site, but the same discipline applies at any scale.
+4. **Enable Leaked Password Protection.** Go to **Authentication → Policies** in the Supabase dashboard. This prevents users from setting passwords that appear in public breach databases.
+
+5. **Confirm backup settings.** The Supabase free tier runs daily backups with a limited retention window. Confirm this meets your needs. Upgrade if you need point-in-time recovery.
+
+6. **Review CORS settings** if you expose the Supabase API to another domain. This is not needed for this single-site setup.
+
+7. **Add a Web Application Firewall** for bot and DDoS protection. Vercel Firewall and Cloudflare are two options.
+
+---
+
+## Reporting a Vulnerability
+
+If you find a security issue in this codebase, fix it in a private branch and deploy before you disclose it publicly.

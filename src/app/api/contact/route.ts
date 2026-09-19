@@ -1,23 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { Resend } from "resend";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { parseRecipients, sendContactNotification } from "@/lib/contact-notify";
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
-/**
- * Strips HTML tags and trims a string to prevent stored-XSS via
- * DB-backed messages being rendered without escaping.
- */
+/* Remove HTML tags and trim whitespace.
+   This prevents stored XSS if a message is later rendered without escaping. */
 function sanitizeText(value: string): string {
   return value.replace(/<[^>]*>/g, "").trim();
 }
 
-/**
- * Verifies a reCAPTCHA v3 token. Returns true when verification passes,
- * or when reCAPTCHA is not yet configured (so we don't block legit
- * submissions before the site owner has set it up).
- */
+/* Verify a reCAPTCHA v3 token.
+   Return true if verification passes.
+   Return true if reCAPTCHA is not configured. This allows legitimate
+   submissions before the site owner has set up reCAPTCHA. */
 async function verifyRecaptcha(token: string | undefined): Promise<boolean> {
   const secret = process.env.RECAPTCHA_SECRET_KEY;
   if (!secret) return true;
@@ -28,8 +23,12 @@ async function verifyRecaptcha(token: string | undefined): Promise<boolean> {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ secret, response: token }),
+      signal: AbortSignal.timeout(5000),
     });
     const data = await res.json();
+    /* The token must have been issued for THIS form's action, so a token
+       harvested from some other reCAPTCHA-protected page can't be replayed. */
+    if (data.action !== undefined && data.action !== "contact_form") return false;
     return data.success === true && (data.score === undefined || data.score >= 0.5);
   } catch (err) {
     console.error("reCAPTCHA verification failed:", err);
@@ -37,9 +36,10 @@ async function verifyRecaptcha(token: string | undefined): Promise<boolean> {
   }
 }
 
-// ── Rate limiter (in-memory, resets on cold start) ───────────────────────
-// For a production multi-instance deployment, replace with Upstash Redis
-// or a Vercel Firewall rule. See SECURITY.md.
+/* In-memory rate limiter. This resets when the server restarts or a new
+   serverless instance starts. It is a soft limit, not a hard guarantee.
+   For stronger protection, use Upstash Redis or a Vercel Firewall rule.
+   See SECURITY.md for details. */
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 const RATE_LIMIT = 5;
 const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
@@ -47,9 +47,9 @@ const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
 
-  // Prune expired entries. Without this the map grows once per distinct
-  // client IP for the lifetime of the instance and is never reclaimed —
-  // a slow memory leak that doubles as a cheap DoS vector.
+  /* Remove expired entries when the map is large. Without this, the map
+     grows by one entry per unique IP address for the lifetime of the
+     server instance. This is a slow memory leak. */
   if (rateLimitMap.size > 5000) {
     for (const [key, value] of rateLimitMap) {
       if (now > value.resetAt) rateLimitMap.delete(key);
@@ -67,19 +67,53 @@ function isRateLimited(ip: string): boolean {
   return false;
 }
 
-// ── Schema ───────────────────────────────────────────────────────────────
+/* Durable rate limit backed by the contact_submissions table, so it holds
+   across serverless instances and restarts (the in-memory limiter above
+   does not). Needs the service-role key to count rows; if that isn't
+   available or the query fails, it fails OPEN and the in-memory limiter is
+   the only protection — a contact form should not go down because of it. */
+const GLOBAL_LIMIT_PER_HOUR = 100;
+
+async function isRateLimitedDurable(ip: string): Promise<boolean> {
+  try {
+    const admin = createAdminClient();
+    const perIpSince = new Date(Date.now() - WINDOW_MS).toISOString();
+    if (ip !== "unknown") {
+      const { count } = await admin
+        .from("contact_submissions")
+        .select("id", { count: "exact", head: true })
+        .eq("ip_address", ip)
+        .gte("created_at", perIpSince);
+      if ((count ?? 0) >= RATE_LIMIT) return true;
+    }
+    /* Overall ceiling: stops a distributed flood from burning the email
+       quota or burying the inbox. */
+    const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count: total } = await admin
+      .from("contact_submissions")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", hourAgo);
+    return (total ?? 0) >= GLOBAL_LIMIT_PER_HOUR;
+  } catch {
+    return false;
+  }
+}
+
 const contactSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(200),
-  email: z.string().trim().email("Please provide a valid email").max(320),
+  email: z.string().trim().email("Enter a valid email address").max(320),
   topic: z.enum(["general", "catering", "beans", "feedback"]).default("general"),
   message: z.string().trim().min(1, "Message is required").max(5000),
   recaptchaToken: z.string().optional(),
+  /* Honeypot. Real visitors never see or fill this field. Checked HERE, not
+     only in the browser, because bots that POST straight to the API never
+     run the page's JavaScript. */
+  website: z.string().max(500).optional(),
 });
 
-// ── CORS helper ──────────────────────────────────────────────────────────
-
-/** Strips a trailing slash and lowercases, so the comparison survives an
- *  env var written as "https://example.com/". */
+/* Remove trailing slashes and normalize to lowercase.
+   This allows comparison to succeed even when the environment variable
+   has a trailing slash or different letter case. */
 function normalizeOrigin(value: string): string {
   try {
     return new URL(value).origin.toLowerCase();
@@ -91,11 +125,11 @@ function normalizeOrigin(value: string): string {
 function isAllowedOrigin(request: NextRequest): { allowed: boolean; origin: string } {
   const origin = request.headers.get("origin") ?? "";
 
-  // No Origin header at all means the request is same-origin (Safari and
-  // several other engines omit it on same-origin POSTs) or is not a
-  // browser fetch. The previous version treated this as a cross-origin
-  // request from "null" and returned 403 — which broke the contact form
-  // outright for those users.
+  /* No Origin header means the request is same-origin. Safari and some
+     other browsers do not send an Origin header on same-origin POST
+     requests. The previous version treated a missing Origin header as a
+     cross-origin request and returned 403, which broke the contact form
+     for those users. */
   if (!origin) return { allowed: true, origin: "" };
 
   const normalized = normalizeOrigin(origin);
@@ -105,9 +139,9 @@ function isAllowedOrigin(request: NextRequest): { allowed: boolean; origin: stri
   const configured = normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL ?? "");
   if (configured) candidates.add(configured);
 
-  // Also accept the origin the request actually arrived on, so a preview
-  // deployment or an apex/www variant isn't rejected because
-  // NEXT_PUBLIC_SITE_URL names only one of them.
+  /* Also accept the origin of the incoming request. This allows preview
+     deployments and apex or www domain variants to work without updating
+     the environment variable. */
   const host = request.headers.get("host");
   if (host) {
     candidates.add(`https://${host.toLowerCase()}`);
@@ -130,22 +164,19 @@ function corsHeaders(request: NextRequest): Record<string, string> {
     Vary: "Origin",
   };
 
-  // Only echo an allow-origin when there was a cross-origin request to
-  // allow; a same-origin POST needs no CORS header at all.
+  /* Only set the allow-origin header for cross-origin requests.
+     Same-origin requests do not need this header. */
   if (allowed && origin) headers["Access-Control-Allow-Origin"] = origin;
   return headers;
 }
 
-// ── OPTIONS preflight ─────────────────────────────────────────────────────
 export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, { status: 204, headers: corsHeaders(request) });
 }
 
-// ── POST handler ──────────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   const headers = corsHeaders(request);
 
-  // Block cross-origin requests from disallowed origins
   if (!isAllowedOrigin(request).allowed) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403, headers });
   }
@@ -175,11 +206,25 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { name, email, topic, message, recaptchaToken } = parsed.data;
+  const { name, email, topic, message, recaptchaToken, website } = parsed.data;
 
-  // Sanitize text inputs before writing to DB / sending in email
+  /* Honeypot tripped: pretend it worked so the bot learns nothing, store nothing. */
+  if (website && website.trim() !== "") {
+    return NextResponse.json({ success: true, message: "Message sent successfully!" }, { headers });
+  }
+
+  if (await isRateLimitedDurable(ip)) {
+    return NextResponse.json(
+      { error: "Too many messages sent. Please try again later." },
+      { status: 429, headers }
+    );
+  }
+
   const safeName = sanitizeText(name);
   const safeMessage = sanitizeText(message);
+  if (!safeName || !safeMessage) {
+    return NextResponse.json({ error: "Name and message are required." }, { status: 400, headers });
+  }
 
   const recaptchaOk = await verifyRecaptcha(recaptchaToken);
   if (!recaptchaOk) {
@@ -189,43 +234,97 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 1. Save to DB first — this is our backup even if email delivery fails.
+  /* Save the submission to the database first. This is the backup record
+     in case email delivery fails. The id is generated here (the public
+     role can't read rows back) so the delivery result can be recorded on
+     the same row afterwards. */
   const supabase = await createClient();
-  const { error: dbError } = await supabase.from("contact_submissions").insert([
-    {
-      name: safeName,
-      email,
-      topic,
-      message: safeMessage,
-      ip_address: ip,
-    },
-  ]);
+  const submissionId = crypto.randomUUID();
+  const baseRow = { name: safeName, email, topic, message: safeMessage, ip_address: ip };
 
+  /* Prefer the service-role client for the write. That lets
+     migration_lock_contact_inserts.sql revoke the public (anon) INSERT
+     grant, closing the hole where anyone holding the public anon key could
+     POST straight to Supabase and skip this route's reCAPTCHA, rate limit
+     and validation. If the service key isn't configured, fall back to the
+     anon client so the form keeps working. */
+  let db: Awaited<ReturnType<typeof createClient>> = supabase;
+  let usingServiceRole = false;
+  try {
+    db = createAdminClient();
+    usingServiceRole = true;
+  } catch {
+    console.warn("SUPABASE_SERVICE_ROLE_KEY is not set; saving contact messages with the public key.");
+  }
+
+  let { error: dbError } = await db
+    .from("contact_submissions")
+    .insert([{ id: submissionId, ...baseRow, email_status: "pending" }]);
+
+  /* If migration_add_contact_email_status.sql hasn't been run yet, the
+     insert above fails with "undefined column". Retry without the new
+     columns so no message is ever lost because of deploy order. */
+  const trackingAvailable = !dbError;
+  if (dbError && (dbError.code === "42703" || /email_status/i.test(dbError.message ?? ""))) {
+    ({ error: dbError } = await db.from("contact_submissions").insert([{ id: submissionId, ...baseRow }]));
+  }
   if (dbError) {
     console.error("Failed to save contact submission:", dbError.message);
   }
 
-  // 2. Send real email via Resend (key is server-side only).
-  try {
-    const resend = new Resend(process.env.RESEND_API_KEY);
-    await resend.emails.send({
-      from: process.env.CONTACT_FORM_FROM_EMAIL || "onboarding@resend.dev",
-      to: process.env.CONTACT_FORM_TO_EMAIL || "hello@caffeinecoffee.com",
-      replyTo: email,
-      subject: `New contact form message: ${topic}`,
-      text: `From: ${safeName} <${email}>\nTopic: ${topic}\n\n${safeMessage}`,
-    });
-  } catch (emailError) {
-    console.error("Failed to send contact email:", emailError);
-    if (dbError) {
-      return NextResponse.json(
-        {
-          error:
-            "We couldn't deliver your message right now. Please try again or call us directly.",
-        },
-        { status: 502, headers }
-      );
+  /* Recipient: CONTACT_FORM_TO_EMAIL wins (comma-separate for several),
+     otherwise the company email edited in Admin → Site Info. There is no
+     hard-coded fallback address any more. */
+  let recipients = parseRecipients(process.env.CONTACT_FORM_TO_EMAIL);
+  if (recipients.length === 0) {
+    const { data: settings } = await supabase.from("site_settings").select("email").eq("id", 1).maybeSingle();
+    recipients = parseRecipients(settings?.email);
+  }
+
+  const from = process.env.CONTACT_FORM_FROM_EMAIL || "onboarding@resend.dev";
+  if (!process.env.CONTACT_FORM_FROM_EMAIL) {
+    console.warn(
+      "CONTACT_FORM_FROM_EMAIL is not set; using Resend's sandbox sender, which can only deliver to the Resend account owner's own address."
+    );
+  }
+
+  const result = await sendContactNotification(
+    { name: safeName, email, topic, message: safeMessage },
+    { recipients, from, apiKey: process.env.RESEND_API_KEY }
+  );
+
+  if (result.status !== "sent") {
+    console.error("Contact notification not delivered:", result.reason);
+  }
+
+  /* Record the outcome so a failed email is visible in Admin → Messages,
+     not just in server logs. Best-effort: never blocks the response. */
+  if (trackingAvailable && usingServiceRole && !dbError) {
+    try {
+      const { error: statusError } = await db
+        .from("contact_submissions")
+        .update({
+          email_status: result.status,
+          email_error: result.status === "sent" ? null : result.reason,
+        })
+        .eq("id", submissionId);
+      if (statusError) console.error("Could not record email status:", statusError.message);
+    } catch (err) {
+      console.error("Could not record email status:", err instanceof Error ? err.message : err);
     }
+  }
+
+  /* The visitor only sees an error when NOTHING was kept: the database
+     save failed AND the email didn't go out. If the message is safely in
+     the admin panel, it succeeded from their point of view. */
+  if (dbError && result.status !== "sent") {
+    return NextResponse.json(
+      {
+        error:
+          "We could not deliver your message right now. Please try again or contact us by phone.",
+      },
+      { status: 502, headers }
+    );
   }
 
   return NextResponse.json(

@@ -18,9 +18,22 @@
 -- New projects created from the current schema.sql already have this
 -- and do not need to run this file.
 
+-- SECURITY NOTE: an earlier version of this file granted the PUBLIC anon key
+-- full insert/update/delete on every table (and on every future table, via
+-- default privileges). RLS contains that today, but one table added later
+-- without RLS would be writable by anyone on the internet, and running this
+-- file after migration_security_hardening.sql silently undid that hardening.
+-- anon now gets exactly what the public site needs and nothing more.
 grant usage on schema public to anon, authenticated, service_role;
-grant select, insert, update, delete on all tables in schema public to anon, authenticated, service_role;
-grant usage, select on all sequences in schema public to anon, authenticated, service_role;
+grant select, insert, update, delete on all tables in schema public to authenticated, service_role;
+grant usage, select on all sequences in schema public to authenticated, service_role;
 
-alter default privileges in schema public grant select, insert, update, delete on tables to anon, authenticated, service_role;
-alter default privileges in schema public grant usage, select on sequences to anon, authenticated, service_role;
+alter default privileges in schema public grant select, insert, update, delete on tables to authenticated, service_role;
+alter default privileges in schema public grant usage, select on sequences to authenticated, service_role;
+
+-- anon: read the public content tables only, plus insert a visit row.
+-- (Contact messages are written by the server with the service-role key;
+-- see migration_lock_contact_inserts.sql.)
+grant select on public.site_settings, public.theme_settings, public.nav_links, public.menu_items to anon;
+grant insert on public.site_visits to anon;
+grant insert on public.contact_submissions to anon; -- remove once migration_lock_contact_inserts.sql is applied

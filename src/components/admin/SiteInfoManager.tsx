@@ -1,5 +1,6 @@
 "use client";
 
+import { useScrollEdges } from "@/lib/use-scroll-edges";
 import { useState } from "react";
 import type { NavLink, SiteSettings, ImageHistoryEntry, ImageHistoryField } from "@/types/database";
 import SiteInfoForm from "@/components/admin/SiteInfoForm";
@@ -36,14 +37,22 @@ export default function SiteInfoManager({
   imageHistory?: Record<ImageHistoryField, ImageHistoryEntry[]>;
 }) {
   const [tab, setTab] = useState<SiteInfoTab>("brand");
+  const rail = useScrollEdges<HTMLDivElement>(TABS.length);
 
   return (
     <div className="lg:flex lg:items-start lg:gap-8">
       {/* Tab rail — horizontal scroller on mobile, vertical list on desktop */}
       <div
+        className="hscroll mb-6 lg:mb-0 lg:w-56 lg:shrink-0"
+        data-scrollable={rail.edges.scrollable}
+        data-start={rail.edges.atStart}
+        data-end={rail.edges.atEnd}
+      >
+      <div
+        ref={rail.ref}
         role="tablist"
         aria-label="Site info sections"
-        className="mb-6 flex gap-1.5 overflow-x-auto pb-1 lg:mb-0 lg:w-56 lg:shrink-0 lg:flex-col lg:overflow-visible lg:pb-0"
+        className="hscroll__track gap-1.5 lg:flex-col lg:overflow-visible lg:p-0 lg:m-0"
       >
         {TABS.map((t) => {
           const active = tab === t.id;
@@ -69,6 +78,7 @@ export default function SiteInfoManager({
             </button>
           );
         })}
+      </div>
       </div>
 
       <div className="min-w-0 flex-1">

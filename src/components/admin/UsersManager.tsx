@@ -5,6 +5,7 @@ import type { UserRole } from "@/types/database";
 import { inviteUser, updateUserRole, removeUser } from "@/lib/actions/developer";
 import SaveButton from "@/components/admin/SaveButton";
 import AdminButton from "@/components/admin/AdminButton";
+import InviteLinkNotice from "@/components/admin/InviteLinkNotice";
 
 interface StaffUser {
   id: string;
@@ -16,28 +17,36 @@ interface StaffUser {
 export default function UsersManager({ users, currentUserId }: { users: StaffUser[]; currentUserId: string }) {
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [manualInvite, setManualInvite] = useState<{ link: string; notice?: string } | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleInvite(formData: FormData) {
     setInviteError(null);
     setInviteSuccess(false);
+    setManualInvite(null);
     startTransition(async () => {
       const result = await inviteUser(formData);
       if (result.error) setInviteError(result.error);
+      else if (result.inviteLink) setManualInvite({ link: result.inviteLink, notice: result.notice });
       else setInviteSuccess(true);
     });
   }
 
   function handleRoleChange(userId: string, role: UserRole) {
+    setActionError(null);
     startTransition(async () => {
-      await updateUserRole(userId, role);
+      const result = await updateUserRole(userId, role);
+      if (result.error) setActionError(result.error);
     });
   }
 
   function handleRemove(userId: string) {
     if (!confirm("Remove this user? They will lose all access immediately.")) return;
+    setActionError(null);
     startTransition(async () => {
-      await removeUser(userId);
+      const result = await removeUser(userId);
+      if (result.error) setActionError(result.error);
     });
   }
 
@@ -58,7 +67,12 @@ export default function UsersManager({ users, currentUserId }: { users: StaffUse
           </div>
           <SaveButton pending={isPending} label="Send invite" />
         </form>
-        {inviteError && <p className="text-sm text-red-600 font-semibold mt-3">{inviteError}</p>}
+        {inviteError && (
+          <p role="alert" className="text-sm text-red-600 font-semibold mt-3">
+            {inviteError}
+          </p>
+        )}
+        {manualInvite && <InviteLinkNotice link={manualInvite.link} notice={manualInvite.notice} />}
         {inviteSuccess && <p className="text-sm text-green-700 font-semibold mt-3">Invite sent!</p>}
         <p className="text-xs text-stone-400 mt-3">
           New users start with &quot;Site editor&quot; access. Change their role below if needed — Staff can
@@ -68,6 +82,11 @@ export default function UsersManager({ users, currentUserId }: { users: StaffUse
 
       <div className="bg-white rounded-lg border border-stone-200 p-6 sm:p-8">
         <h2 className="font-cozy font-bold text-lg text-caffeine-dark mb-4">Staff accounts</h2>
+        {actionError && (
+          <p role="alert" className="mb-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+            {actionError}
+          </p>
+        )}
         <div className="space-y-3">
           {users.map((u) => (
             <div key={u.id} className="flex items-center justify-between gap-4 p-3 rounded-md bg-stone-50">

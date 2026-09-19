@@ -1,21 +1,23 @@
 import { getThemeSettings } from "@/lib/data/public";
+import { safeColor, safeFont } from "@/lib/theme-sanitize";
 
 export default async function ThemeVars() {
   const theme = await getThemeSettings();
   if (!theme) return null;
 
   const css = `:root {
-    --caffeine-dark: ${theme.color_dark};
-    --caffeine-card: ${theme.color_card};
-    --caffeine-cream: ${theme.color_cream};
-    --caffeine-tan: ${theme.color_tan};
-    --caffeine-accent: ${theme.color_accent};
-    --caffeine-gold: ${theme.color_gold};
-    --font-cozy: "${theme.font_heading}", cursive, sans-serif;
-    --font-body: "${theme.font_body}", sans-serif;
+    --caffeine-dark: ${safeColor(theme.color_dark, "#1c120c")};
+    --caffeine-card: ${safeColor(theme.color_card, "#291b13")};
+    --caffeine-cream: ${safeColor(theme.color_cream, "#f9f4ee")};
+    --caffeine-tan: ${safeColor(theme.color_tan, "#f0e3d5")};
+    --caffeine-accent: ${safeColor(theme.color_accent, "#432516")};
+    --caffeine-gold: ${safeColor(theme.color_gold, "#d99b26")};
+    --font-cozy: "${safeFont(theme.font_heading, "Comfortaa")}", cursive, sans-serif;
+    --font-body: "${safeFont(theme.font_body, "Plus Jakarta Sans")}", sans-serif;
   }`;
 
-  // Safe: values come from a DB table only the "developer" role can write
-  // (enforced by Row Level Security), never from user-submitted input.
+  // Every value is validated by safeColor/safeFont above, so nothing in the
+  // theme table can close the <style> tag or inject markup, even if a row
+  // were written by some path other than updateTheme().
   return <style dangerouslySetInnerHTML={{ __html: css }} />;
 }

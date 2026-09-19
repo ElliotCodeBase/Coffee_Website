@@ -1,10 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-/**
- * Pages a `staff` account is allowed to reach. Everything else under
- * /admin is admin/developer territory.
- */
+/* Pages that a staff account can access. All other paths under /admin
+   require the admin or developer role. */
 export const STAFF_ALLOWED_PREFIXES = [
   "/admin/menu",
   "/admin/messages",
@@ -12,10 +10,10 @@ export const STAFF_ALLOWED_PREFIXES = [
   "/admin/account",
 ] as const;
 
-/** Where a staff account lands when it has nowhere better to go. */
+/* The page a staff account goes to when it has no specific destination. */
 export const STAFF_LANDING = "/admin/menu";
 
-/** Reachable without a session. */
+/* These paths do not require a session. */
 const PUBLIC_ADMIN_PATHS = new Set(["/admin/login", "/admin/set-password"]);
 
 export async function proxy(request: NextRequest) {
@@ -42,9 +40,9 @@ export async function proxy(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
-  // Login and the invite "set password" page must stay reachable while
-  // signed out. Touching auth here at all would refresh (and rotate) the
-  // session cookie on a request that has no session to refresh.
+  /* The login page and the invite set-password page must be reachable
+     without a session. Do not call auth here. Calling auth on a request
+     with no session rotates the session cookie unnecessarily. */
   if (PUBLIC_ADMIN_PATHS.has(path)) {
     return response;
   }
@@ -65,8 +63,7 @@ export async function proxy(request: NextRequest) {
     return redirect(loginUrl);
   }
 
-  // One profile read for the whole request — the old version issued a
-  // second identical query for /admin/developer/* on top of this one.
+  /* Read the user's role once per request. */
   const { data: profile } = await supabase
     .from("profiles")
     .select("role")
@@ -74,6 +71,14 @@ export async function proxy(request: NextRequest) {
     .single();
 
   const role = profile?.role;
+
+  /* A signed-in account with no profile row (or an unreadable one) has NO
+     admin role. Without this check it fell through and could open admin
+     pages — for example an account created through Supabase's public
+     sign-up endpoint. Fail closed. */
+  if (!role) {
+    return redirect(new URL("/admin/login", request.url));
+  }
 
   if (path.startsWith("/admin/developer") && role !== "developer") {
     return redirect(new URL("/admin", request.url));
@@ -87,17 +92,12 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Scoped deliberately to /admin only.
-  //
-  // The previous matcher also included a catch-all
-  // "/((?!_next/static|_next/image|favicon.ico|...).*)" which ran a full
-  // Supabase `getUser()` round trip on EVERY request to the public site —
-  // including server-action POSTs, /api/contact, and router prefetches.
-  // Each of those can refresh and rotate the auth refresh token, so two
-  // requests racing (a prefetch firing while the login POST is in flight)
-  // could invalidate the session that was just issued and bounce the user
-  // straight back to the login screen. It also added a network round trip
-  // to the TTFB of every public page load for no benefit: nothing outside
-  // /admin is gated.
+  /* Scope the middleware to the /admin path only.
+     The previous matcher also included a catch-all pattern that ran a full
+     Supabase getUser() call on every public request, including server
+     action POSTs, /api/contact, and router prefetches. Each of those can
+     rotate the auth refresh token. Two concurrent requests (for example, a
+     prefetch and a login POST) could invalidate the new session and redirect
+     the user back to the login screen. Scoping to /admin avoids this. */
   matcher: ["/admin/:path*"],
 };

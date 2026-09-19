@@ -8,12 +8,10 @@ export interface AuthResult {
   error?: string;
 }
 
-/**
- * Only ever allow redirecting back into the admin panel on this origin.
- * Rejects protocol-relative ("//evil.com"), absolute, and backslash-escaped
- * targets so a crafted ?redirectTo= can't turn the login page into an
- * open redirect.
- */
+/* Validate a redirect target.
+   The target must be a path inside /admin. Return null if the target
+   is not safe to use. This function prevents an attacker from using a
+   crafted ?redirectTo= parameter to redirect the user to an external site. */
 function safeRedirectTarget(raw: string): string | null {
   if (!raw.startsWith("/admin")) return null;
   if (raw.startsWith("//") || raw.includes("\\")) return null;
@@ -34,14 +32,13 @@ export async function login(formData: FormData): Promise<AuthResult> {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error || !data.user) {
-    // Don't leak whether the email exists — generic message only.
+    /* Use a generic message. Do not reveal whether the email address exists. */
     return { error: "Invalid email or password." };
   }
 
-  // Send the user somewhere they're actually allowed to be. Previously this
-  // always hard-redirected to /admin, so a staff account logged in, got
-  // bounced by the proxy to /admin/menu, and any deep link they'd been
-  // redirected away from was thrown away.
+  /* Send the user to the requested page if it is safe to do so.
+     Fall back to /admin if no destination is specified.
+     If the user is a staff member, send them to a page they can access. */
   let destination = requested ?? "/admin";
 
   const { data: profile } = await supabase
@@ -66,12 +63,9 @@ export async function logout() {
   redirect("/admin/login");
 }
 
-/**
- * Lets any logged-in admin panel user (admin, developer, or staff)
- * change their own password. Re-verifies the current password first —
- * this is a deliberate extra step so an unattended, already-logged-in
- * browser session can't be used to silently take over the account.
- */
+/* Change the password for the current user.
+   This function re-verifies the current password before making the change.
+   This step prevents a silent takeover from an unattended browser session. */
 export async function changeOwnPassword(formData: FormData): Promise<AuthResult> {
   const currentPassword = String(formData.get("current_password") || "");
   const newPassword = String(formData.get("new_password") || "");
@@ -87,7 +81,7 @@ export async function changeOwnPassword(formData: FormData): Promise<AuthResult>
     return { error: "Your new password must be different from your current one." };
   }
   if (newPassword !== confirmPassword) {
-    return { error: "New passwords don't match." };
+    return { error: "New passwords do not match." };
   }
 
   const supabase = await createClient();
@@ -98,7 +92,7 @@ export async function changeOwnPassword(formData: FormData): Promise<AuthResult>
     return { error: "You must be logged in." };
   }
 
-  // Re-verify the current password before allowing the change.
+  /* Verify the current password before allowing the change. */
   const { error: verifyError } = await supabase.auth.signInWithPassword({
     email: user.email,
     password: currentPassword,
@@ -109,7 +103,7 @@ export async function changeOwnPassword(formData: FormData): Promise<AuthResult>
 
   const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
   if (updateError) {
-    // Don't surface raw provider errors to the browser.
+    /* Log the raw error on the server. Do not send it to the browser. */
     console.error("changeOwnPassword error:", updateError.message);
     return { error: "Failed to update password. Please try again." };
   }

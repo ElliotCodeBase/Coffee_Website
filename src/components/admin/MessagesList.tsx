@@ -138,6 +138,14 @@ export default function MessagesList({
                       {TOPIC_LABELS[msg.topic] ?? msg.topic}
                     </span>
                   )}
+                  {(msg.email_status === "failed" || msg.email_status === "skipped") && (
+                    <span
+                      title={msg.email_error ?? undefined}
+                      className="text-[10px] font-semibold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md"
+                    >
+                      Email not sent
+                    </span>
+                  )}
                 </div>
                 <a href={`mailto:${msg.email}`} className="text-xs text-caffeine-accent hover:underline">
                   {msg.email}
