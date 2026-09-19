@@ -9,21 +9,47 @@ export interface ActionResult {
   error?: string;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MENU_ROLES = ["admin", "developer", "staff"];
+
+/**
+ * Server actions are public endpoints — not being able to open /admin/menu
+ * does not stop anyone from calling these directly. RLS is the real
+ * boundary, but checking here turns a silent failure into a clear error
+ * and keeps the check next to the code that needs it.
+ */
+async function assertCanManageMenu(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  return !!profile && MENU_ROLES.includes(profile.role);
+}
+
+function parseCategory(value: FormDataEntryValue | null): MenuCategory {
+  return value === "pastries" ? "pastries" : "drinks";
+}
+
 export async function createMenuItem(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
+  if (!(await assertCanManageMenu(supabase))) {
+    return { error: "You don't have permission to manage the menu." };
+  }
 
   const price = Number(formData.get("price"));
-  if (Number.isNaN(price) || price < 0) {
-    return { error: "Please enter a valid price." };
+  if (!Number.isFinite(price) || price < 0 || price > 9999.99) {
+    return { error: "Please enter a valid price between 0 and 9999.99." };
   }
 
   const name = String(formData.get("name") || "").trim();
-  if (!name) return { error: "Name is required." };
+  if (!name || name.length > 120) return { error: "Name is required (max 120 characters)." };
 
   const { error } = await supabase.from("menu_items").insert([
     {
       name,
-      category: (formData.get("category") as MenuCategory) || "drinks",
+      category: parseCategory(formData.get("category")),
       description: String(formData.get("description") || "") || null,
       price,
       badge: String(formData.get("badge") || "") || null,
@@ -46,21 +72,26 @@ export async function createMenuItem(formData: FormData): Promise<ActionResult> 
 }
 
 export async function updateMenuItem(id: string, formData: FormData): Promise<ActionResult> {
+  if (!UUID_RE.test(id)) return { error: "Invalid menu item." };
+
   const supabase = await createClient();
+  if (!(await assertCanManageMenu(supabase))) {
+    return { error: "You don't have permission to manage the menu." };
+  }
 
   const price = Number(formData.get("price"));
-  if (Number.isNaN(price) || price < 0) {
-    return { error: "Please enter a valid price." };
+  if (!Number.isFinite(price) || price < 0 || price > 9999.99) {
+    return { error: "Please enter a valid price between 0 and 9999.99." };
   }
 
   const name = String(formData.get("name") || "").trim();
-  if (!name) return { error: "Name is required." };
+  if (!name || name.length > 120) return { error: "Name is required (max 120 characters)." };
 
   const { error } = await supabase
     .from("menu_items")
     .update({
       name,
-      category: (formData.get("category") as MenuCategory) || "drinks",
+      category: parseCategory(formData.get("category")),
       description: String(formData.get("description") || "") || null,
       price,
       badge: String(formData.get("badge") || "") || null,
@@ -84,7 +115,13 @@ export async function updateMenuItem(id: string, formData: FormData): Promise<Ac
 }
 
 export async function deleteMenuItem(id: string): Promise<ActionResult> {
+  if (!UUID_RE.test(id)) return { error: "Invalid menu item." };
+
   const supabase = await createClient();
+  if (!(await assertCanManageMenu(supabase))) {
+    return { error: "You don't have permission to manage the menu." };
+  }
+
   const { error } = await supabase.from("menu_items").delete().eq("id", id);
 
   if (error) {

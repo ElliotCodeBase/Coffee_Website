@@ -77,3 +77,16 @@ body {
   animation: gentle-float 5s ease-in-out infinite;
 }
 
+
+/*
+  Motion safety. The header ticker and the floating best-seller showcase
+  are decorative, so they stop entirely when the visitor has asked their
+  OS for reduced motion — the content stays readable either way.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .animate-infinite-scroll,
+  .animate-gentle-float {
+    animation: none !important;
+    transform: none !important;
+  }
+}

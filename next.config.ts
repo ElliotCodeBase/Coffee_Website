@@ -8,6 +8,9 @@ const allowedDevOrigins = isDev ? ["192.168.137.1"] : [];
 const nextConfig: NextConfig = {
   allowedDevOrigins,
 
+  // Don't advertise the framework/version in every response.
+  poweredByHeader: false,
+
   // ── Security Headers ────────────────────────────────────────────────────
   // Applied to every route. A strict CSP is intentionally omitted here
   // because the site injects user-controlled custom code (the Custom Code
@@ -39,6 +42,21 @@ const nextConfig: NextConfig = {
           // Control cross-origin resource sharing at the document level
           { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
           { key: "Cross-Origin-Resource-Policy", value: "same-site" },
+          // A *partial* CSP. A full script-src can't be set while the
+          // Custom Code developer feature injects arbitrary third-party
+          // tags, but these four directives cost nothing and close real
+          // gaps: no plugin content, no <base> hijacking of every relative
+          // URL on the page, no form posting to an attacker's endpoint,
+          // and no framing by another site.
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'self'",
+            ].join("; "),
+          },
         ],
       },
       // ── Admin routes: stronger protection ─────────────────────────────
@@ -49,6 +67,15 @@ const nextConfig: NextConfig = {
           { key: "Cache-Control", value: "no-store, no-cache, must-revalidate" },
           // Never index admin pages
           { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "object-src 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "frame-ancestors 'none'",
+            ].join("; "),
+          },
         ],
       },
       // ── API routes: no caching, no framing ────────────────────────────

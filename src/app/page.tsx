@@ -101,7 +101,7 @@ export default async function HomePage() {
         Skip to content
       </a>
 
-      <Header navLinks={navLinks} settings={settings} />
+      <Header navLinks={navLinks} settings={settings} menuItems={menuItems} />
       <CodeInjector snippets={bodyStartSnippets} />
       <main>
         <HeroStory settings={settings} />

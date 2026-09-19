@@ -184,17 +184,28 @@ function MenuItemCard({
     <div className={`bg-white rounded-xl border flex flex-col gap-0 overflow-hidden transition-shadow hover:shadow-md ${
       !item.is_available ? "opacity-60 border-stone-200" : "border-stone-200"
     }`}>
-      {/* Image */}
-      <div className="relative w-full aspect-[4/3] bg-stone-100">
+      {/* Image.
+          Every thumbnail is locked to the same 4:3 box regardless of the
+          source image's own dimensions. The previous version sized the
+          <img> with `w-full h-full` inside a parent whose height came only
+          from `aspect-ratio` — a percentage height against a parent with no
+          definite height isn't resolvable in every engine, so the image fell
+          back to its intrinsic height and tall/wide uploads produced cards
+          of visibly different heights. Absolutely positioning the image
+          inside the (already `relative`) ratio box makes the crop
+          deterministic everywhere, and `shrink-0` stops the flex column from
+          squeezing it when a sibling grows. */}
+      <div className="relative w-full aspect-[4/3] shrink-0 overflow-hidden bg-stone-100">
         {item.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={item.image_url}
             alt={item.name}
-            className="w-full h-full object-cover"
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover object-center"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-stone-300">
+          <div className="absolute inset-0 flex items-center justify-center text-stone-300">
             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
@@ -341,7 +352,7 @@ export default function MenuItemsManager({ items }: { items: MenuItem[] }) {
           </button>
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid auto-rows-fr sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((item) =>
             editingId === item.id ? (
               <div key={item.id} className="sm:col-span-2 lg:col-span-3 xl:col-span-4">

@@ -46,6 +46,16 @@ const WINDOW_MS = 10 * 60 * 1000; // 10 minutes
 
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
+
+  // Prune expired entries. Without this the map grows once per distinct
+  // client IP for the lifetime of the instance and is never reclaimed —
+  // a slow memory leak that doubles as a cheap DoS vector.
+  if (rateLimitMap.size > 5000) {
+    for (const [key, value] of rateLimitMap) {
+      if (now > value.resetAt) rateLimitMap.delete(key);
+    }
+  }
+
   const entry = rateLimitMap.get(ip);
 
   if (!entry || now > entry.resetAt) {
@@ -67,21 +77,63 @@ const contactSchema = z.object({
 });
 
 // ── CORS helper ──────────────────────────────────────────────────────────
-function corsHeaders(request: NextRequest): Record<string, string> {
+
+/** Strips a trailing slash and lowercases, so the comparison survives an
+ *  env var written as "https://example.com/". */
+function normalizeOrigin(value: string): string {
+  try {
+    return new URL(value).origin.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function isAllowedOrigin(request: NextRequest): { allowed: boolean; origin: string } {
   const origin = request.headers.get("origin") ?? "";
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
-  // Allow only the configured site origin (and localhost in dev)
-  const allowed =
-    origin === siteUrl ||
-    (process.env.NODE_ENV === "development" && /^https?:\/\/localhost(:\d+)?$/.test(origin));
+  // No Origin header at all means the request is same-origin (Safari and
+  // several other engines omit it on same-origin POSTs) or is not a
+  // browser fetch. The previous version treated this as a cross-origin
+  // request from "null" and returned 403 — which broke the contact form
+  // outright for those users.
+  if (!origin) return { allowed: true, origin: "" };
 
-  return {
-    "Access-Control-Allow-Origin": allowed ? origin : "null",
+  const normalized = normalizeOrigin(origin);
+  if (!normalized) return { allowed: false, origin };
+
+  const candidates = new Set<string>();
+  const configured = normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL ?? "");
+  if (configured) candidates.add(configured);
+
+  // Also accept the origin the request actually arrived on, so a preview
+  // deployment or an apex/www variant isn't rejected because
+  // NEXT_PUBLIC_SITE_URL names only one of them.
+  const host = request.headers.get("host");
+  if (host) {
+    candidates.add(`https://${host.toLowerCase()}`);
+    if (process.env.NODE_ENV === "development") candidates.add(`http://${host.toLowerCase()}`);
+  }
+
+  if (process.env.NODE_ENV === "development" && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(normalized)) {
+    return { allowed: true, origin };
+  }
+
+  return { allowed: candidates.has(normalized), origin };
+}
+
+function corsHeaders(request: NextRequest): Record<string, string> {
+  const { allowed, origin } = isAllowedOrigin(request);
+
+  const headers: Record<string, string> = {
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
-    "Vary": "Origin",
+    Vary: "Origin",
   };
+
+  // Only echo an allow-origin when there was a cross-origin request to
+  // allow; a same-origin POST needs no CORS header at all.
+  if (allowed && origin) headers["Access-Control-Allow-Origin"] = origin;
+  return headers;
 }
 
 // ── OPTIONS preflight ─────────────────────────────────────────────────────
@@ -94,7 +146,7 @@ export async function POST(request: NextRequest) {
   const headers = corsHeaders(request);
 
   // Block cross-origin requests from disallowed origins
-  if (headers["Access-Control-Allow-Origin"] === "null") {
+  if (!isAllowedOrigin(request).allowed) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403, headers });
   }
 

@@ -5,7 +5,7 @@ import { login } from "@/lib/actions/auth";
 import PasswordField from "@/components/shared/PasswordField";
 import AdminButton from "@/components/admin/AdminButton";
 
-export default function LoginForm() {
+export default function LoginForm({ redirectTo = "" }: { redirectTo?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -19,6 +19,7 @@ export default function LoginForm() {
 
   return (
     <form action={handleSubmit} className="space-y-5">
+      <input type="hidden" name="redirectTo" value={redirectTo} />
       <div>
         <label htmlFor="email" className="block text-xs font-bold uppercase text-stone-500 mb-2">
           Email

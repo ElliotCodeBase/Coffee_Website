@@ -9,6 +9,60 @@ export interface ActionResult {
   error?: string;
 }
 
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Server actions are publicly reachable endpoints — being unable to load
+ * /admin/site-info in the UI does not stop anyone from POSTing to the
+ * action directly. RLS blocks the write too, but failing here gives a
+ * clear error instead of a silent "Failed to save".
+ */
+async function assertCanEditSite(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false as const };
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (profile?.role !== "admin" && profile?.role !== "developer") return { ok: false as const };
+
+  return { ok: true as const, userId: user.id };
+}
+
+/**
+ * Fields that end up in an href/src attribute on the public site. Without
+ * this, an `javascript:...` value saved here becomes stored XSS for every
+ * visitor who clicks a social icon.
+ */
+const URL_FIELDS = new Set([
+  "logo_url",
+  "hero_image_url",
+  "about_image_url",
+  "map_embed_url",
+  "social_facebook",
+  "social_twitter",
+  "social_instagram",
+  "social_linkedin",
+]);
+
+function isSafeExternalUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+/** Allows in-page anchors and same-site paths, plus http(s) URLs. */
+function isSafeLinkTarget(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("#")) return /^#[\w-]*$/.test(trimmed);
+  if (trimmed.startsWith("/")) return !trimmed.startsWith("//") && !trimmed.includes("\\");
+  return isSafeExternalUrl(trimmed);
+}
+
 const EDITABLE_FIELDS = [
   "business_name",
   "tagline",
@@ -74,15 +128,20 @@ async function archiveOldImage(
 export async function updateSiteSettings(formData: FormData): Promise<ActionResult> {
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "You must be logged in." };
+  const check = await assertCanEditSite(supabase);
+  if (!check.ok) return { error: "You don't have permission to edit site settings." };
+  const user = { id: check.userId };
 
   const update: Record<string, string | null> = {};
   for (const field of EDITABLE_FIELDS) {
     const value = formData.get(field);
-    update[field] = value === null || value === "" ? null : String(value);
+    const stringValue = value === null ? "" : String(value).trim();
+
+    if (stringValue && URL_FIELDS.has(field) && !isSafeExternalUrl(stringValue)) {
+      return { error: `“${field.replace(/_/g, " ")}” must be a full http:// or https:// URL.` };
+    }
+
+    update[field] = stringValue === "" ? null : stringValue;
   }
 
   // Archive whichever tracked images are actually about to change,
@@ -128,11 +187,14 @@ export async function restoreSiteImage(
     return { error: "That field can't be restored this way." };
   }
 
+  if (!isSafeExternalUrl(imageUrl)) {
+    return { error: "That image URL isn't valid." };
+  }
+
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "You must be logged in." };
+  const check = await assertCanEditSite(supabase);
+  if (!check.ok) return { error: "You don't have permission to edit site settings." };
+  const user = { id: check.userId };
 
   const { data: current } = await supabase.from("site_settings").select("*").eq("id", 1).single();
   const currentValue = current ? (current as SiteSettings)[fieldName] : null;
@@ -162,10 +224,35 @@ export async function restoreSiteImage(
 export async function updateNavLinks(links: { id: string; label: string; href: string }[]): Promise<ActionResult> {
   const supabase = await createClient();
 
+  const check = await assertCanEditSite(supabase);
+  if (!check.ok) return { error: "You don't have permission to edit navigation." };
+
+  if (!Array.isArray(links) || links.length > 50) {
+    return { error: "Too many navigation links." };
+  }
+
+  // Validate everything BEFORE writing anything, so a bad row can't leave
+  // the nav half-updated.
+  for (const link of links) {
+    if (!UUID_RE.test(String(link?.id ?? ""))) {
+      return { error: "Invalid navigation link." };
+    }
+    const label = String(link.label ?? "").trim();
+    if (!label || label.length > 60) {
+      return { error: "Each navigation label must be 1–60 characters." };
+    }
+    // The old version wrote href straight through. A value of
+    // `javascript:fetch(...)` saved here rendered as a clickable link in
+    // the public header for every visitor — stored XSS.
+    if (!isSafeLinkTarget(String(link.href ?? ""))) {
+      return { error: "Links must be an #anchor, a /path, or a full http(s):// URL." };
+    }
+  }
+
   for (const link of links) {
     const { error } = await supabase
       .from("nav_links")
-      .update({ label: link.label, href: link.href })
+      .update({ label: String(link.label).trim(), href: String(link.href).trim() })
       .eq("id", link.id);
     if (error) {
       console.error("updateNavLinks error:", error.message);

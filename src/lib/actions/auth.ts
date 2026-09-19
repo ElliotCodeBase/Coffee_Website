@@ -2,28 +2,62 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { STAFF_ALLOWED_PREFIXES, STAFF_LANDING } from "@/proxy";
 
 export interface AuthResult {
   error?: string;
 }
 
+/**
+ * Only ever allow redirecting back into the admin panel on this origin.
+ * Rejects protocol-relative ("//evil.com"), absolute, and backslash-escaped
+ * targets so a crafted ?redirectTo= can't turn the login page into an
+ * open redirect.
+ */
+function safeRedirectTarget(raw: string): string | null {
+  if (!raw.startsWith("/admin")) return null;
+  if (raw.startsWith("//") || raw.includes("\\")) return null;
+  if (raw === "/admin/login" || raw === "/admin/set-password") return null;
+  return raw;
+}
+
 export async function login(formData: FormData): Promise<AuthResult> {
   const email = String(formData.get("email") || "").trim();
   const password = String(formData.get("password") || "");
+  const requested = safeRedirectTarget(String(formData.get("redirectTo") || ""));
 
   if (!email || !password) {
     return { error: "Email and password are required." };
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-  if (error) {
+  if (error || !data.user) {
     // Don't leak whether the email exists — generic message only.
     return { error: "Invalid email or password." };
   }
 
-  redirect("/admin");
+  // Send the user somewhere they're actually allowed to be. Previously this
+  // always hard-redirected to /admin, so a staff account logged in, got
+  // bounced by the proxy to /admin/menu, and any deep link they'd been
+  // redirected away from was thrown away.
+  let destination = requested ?? "/admin";
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", data.user.id)
+    .single();
+
+  if (
+    profile?.role === "staff" &&
+    !STAFF_ALLOWED_PREFIXES.some((prefix) => destination.startsWith(prefix))
+  ) {
+    destination = STAFF_LANDING;
+  }
+
+  redirect(destination);
 }
 
 export async function logout() {
@@ -49,6 +83,9 @@ export async function changeOwnPassword(formData: FormData): Promise<AuthResult>
   if (newPassword.length < 8) {
     return { error: "New password must be at least 8 characters." };
   }
+  if (newPassword === currentPassword) {
+    return { error: "Your new password must be different from your current one." };
+  }
   if (newPassword !== confirmPassword) {
     return { error: "New passwords don't match." };
   }
@@ -72,7 +109,9 @@ export async function changeOwnPassword(formData: FormData): Promise<AuthResult>
 
   const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
   if (updateError) {
-    return { error: updateError.message || "Failed to update password." };
+    // Don't surface raw provider errors to the browser.
+    console.error("changeOwnPassword error:", updateError.message);
+    return { error: "Failed to update password. Please try again." };
   }
 
   return {};
