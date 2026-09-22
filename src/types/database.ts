@@ -114,6 +114,17 @@ export type ImageHistoryEntry = {
   replaced_at: string;
 };
 
+export type Review = {
+  id: string;
+  author_name: string;
+  body: string;
+  rating: number;
+  avatar_url: string | null;
+  is_published: boolean;
+  sort_order: number;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -154,6 +165,12 @@ export type Database = {
         Row: ImageHistoryEntry;
         Insert: Partial<ImageHistoryEntry>;
         Update: Partial<ImageHistoryEntry>;
+        Relationships: never[];
+      };
+      reviews: {
+        Row: Review;
+        Insert: Partial<Review>;
+        Update: Partial<Review>;
         Relationships: never[];
       };
     };
