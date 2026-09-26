@@ -1,6 +1,15 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
-import type { SiteSettings, NavLink, MenuItem, ThemeSettings, ImageHistoryEntry, ImageHistoryField } from "@/types/database";
+import type {
+  SiteSettings,
+  NavLink,
+  MenuItem,
+  ThemeSettings,
+  ImageHistoryEntry,
+  ImageHistoryField,
+  LegalPage,
+  LegalPageSlug,
+} from "@/types/database";
 
 /* These functions run in Server Components and read only public rows.
    Query filters enforce this at the application level. Postgres Row Level
@@ -68,6 +77,21 @@ export const getNavLinks = cache(async function getNavLinks(): Promise<NavLink[]
   );
 });
 
+/* Terms of Service / Privacy Policy text, editable in Admin → Legal Pages
+   (admin and developer only — staff cannot edit these). Falls back to null
+   so the page component can show its own placeholder copy when nothing has
+   been written yet. */
+export const getLegalPage = cache(async function getLegalPage(slug: LegalPageSlug): Promise<LegalPage | null> {
+  return safeQuery(
+    `getLegalPage(${slug})`,
+    async () => {
+      const supabase = await createClient();
+      return supabase.from("legal_pages").select("*").eq("slug", slug).maybeSingle();
+    },
+    null
+  );
+});
+
 export const getMenuItems = cache(async function getMenuItems(): Promise<MenuItem[]> {
   return safeQuery(
     "getMenuItems",
@@ -88,6 +112,7 @@ export async function getImageHistory(): Promise<Record<ImageHistoryField, Image
     logo_url: [],
     hero_image_url: [],
     about_image_url: [],
+    favicon_url: [],
   };
 
   const supabase = await createClient();

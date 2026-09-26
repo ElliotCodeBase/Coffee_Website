@@ -3,7 +3,8 @@
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { inviteTeamUser, normalizeEmail } from "@/lib/invite";
-import { isFontName, isHexColor } from "@/lib/theme-sanitize";
+import { isHexColor } from "@/lib/theme-sanitize";
+import { isFontPairingKey } from "@/lib/theme-presets";
 import type { UserRole } from "@/types/database";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -32,25 +33,40 @@ async function assertDeveloper() {
   return { ok: true as const, supabase, userId: user.id };
 }
 
-export async function updateTheme(formData: FormData): Promise<ActionResult> {
-  const check = await assertDeveloper();
-  if (!check.ok) return { error: "Developer access required." };
+/* Theme & Colors is an Admin Panel feature (business owner + developer),
+   unlike the rest of this file which is developer-only. Staff cannot
+   reach it — enforced here and again by theme_settings' RLS policy. */
+async function assertCanEditTheme() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false as const, supabase };
 
-  /* These values are written into a <style> block on every public page, so
-     only strict hex colors and plain font names are accepted. */
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (profile?.role !== "admin" && profile?.role !== "developer") return { ok: false as const, supabase };
+
+  return { ok: true as const, supabase, userId: user.id };
+}
+
+export async function updateTheme(formData: FormData): Promise<ActionResult> {
+  const check = await assertCanEditTheme();
+  if (!check.ok) return { error: "You do not have permission to edit the theme." };
+
+  /* Colors are written into a <style> block on every public page, so only
+     strict hex values are accepted. Fonts are a curated pairing key, not
+     free text — see src/lib/theme-presets.ts for why. */
   const colorFields = ["color_dark", "color_card", "color_cream", "color_tan", "color_accent", "color_gold"] as const;
-  const fontFields = ["font_heading", "font_body"] as const;
   const values: Record<string, string> = {};
   for (const f of colorFields) {
     const v = String(formData.get(f) ?? "").trim();
     if (!isHexColor(v)) return { error: `${f.replace(/_/g, " ")} must be a hex color like #1c120c.` };
     values[f] = v;
   }
-  for (const f of fontFields) {
-    const v = String(formData.get(f) ?? "").trim();
-    if (!isFontName(v)) return { error: `${f.replace(/_/g, " ")} may only contain letters, numbers, spaces, hyphens and underscores.` };
-    values[f] = v;
-  }
+
+  const fontPairing = String(formData.get("font_pairing") ?? "").trim();
+  if (!isFontPairingKey(fontPairing)) return { error: "Choose one of the listed font pairings." };
+  values.font_pairing = fontPairing;
 
   const { error } = await check.supabase
     .from("theme_settings")
@@ -62,8 +78,8 @@ export async function updateTheme(formData: FormData): Promise<ActionResult> {
     return { error: "Failed to save theme." };
   }
 
-  revalidatePath("/");
-  revalidatePath("/admin/developer/theme");
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/theme");
   return { success: true };
 }
 

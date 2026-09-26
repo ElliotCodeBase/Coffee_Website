@@ -1,0 +1,59 @@
+<!--
+  Staff/Admin invite email — Supabase Auth "Invite user" template.
+
+  WHERE THIS GOES (this file is NOT deployed by code — Supabase Auth emails
+  are configured in the dashboard, not the git repo):
+    1. Open your Supabase project → Authentication → Email Templates.
+    2. Select the "Invite user" template.
+    3. Paste everything below into the "Message body" box, replacing what's
+       there.
+    4. Save.
+
+  Supabase's template engine supports these variables — keep them exactly
+  as written, don't rename them:
+    {{ .ConfirmationURL }}  — the accept-invite link (required)
+    {{ .SiteURL }}          — your site's base URL, from Authentication → URL
+                              Configuration
+    {{ .Email }}            — the invited person's email address
+
+  This template can't read your live site_settings (business name, brand
+  color) — Supabase's mailer runs outside your Next.js app and has no
+  database access at send time. "Caffeine" below is a static placeholder;
+  if you rename the business, edit this HTML and re-paste it.
+-->
+<div style="margin:0;padding:32px 16px;background:#f0e3d5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(28,18,12,0.08);">
+    <tr>
+      <td style="background:#1c120c;padding:32px 32px 28px;text-align:center;">
+        <p style="margin:0;color:#d99b26;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Caffeine</p>
+        <h1 style="margin:8px 0 0;color:#ffffff;font-size:22px;font-weight:700;">You're invited to the team</h1>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:32px 32px 8px;">
+        <p style="margin:0 0 16px;color:#291b13;font-size:15px;line-height:1.6;">
+          You've been invited to help manage the Caffeine website. Set your password to get started —
+          this link is only valid for a limited time.
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:8px 32px 32px;text-align:center;">
+        <a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#1c120c;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 28px;border-radius:8px;">
+          Set your password
+        </a>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:0 32px 28px;border-top:1px solid #f0e3d5;">
+        <p style="margin:18px 0 0;color:#a99a8c;font-size:12px;line-height:1.5;">
+          This invite was sent to {{ .Email }}. If you weren't expecting this, you can ignore this email —
+          no account will be created without setting a password.
+        </p>
+        <p style="margin:12px 0 0;color:#a99a8c;font-size:12px;">
+          <a href="{{ .SiteURL }}" style="color:#432516;text-decoration:none;">{{ .SiteURL }}</a>
+        </p>
+      </td>
+    </tr>
+  </table>
+</div>

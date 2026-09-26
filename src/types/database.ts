@@ -34,6 +34,8 @@ export type SiteSettings = {
   social_linkedin: string | null;
   footer_copyright: string | null;
   meta_description: string | null;
+  favicon_url: string | null;
+  seo_title: string | null;
   updated_at: string;
   updated_by: string | null;
 };
@@ -94,8 +96,7 @@ export type ThemeSettings = {
   color_tan: string;
   color_accent: string;
   color_gold: string;
-  font_heading: string;
-  font_body: string;
+  font_pairing: string;
   updated_at: string;
 };
 
@@ -105,7 +106,17 @@ export type SiteVisit = {
   path: string;
 };
 
-export type ImageHistoryField = "logo_url" | "hero_image_url" | "about_image_url";
+export type LegalPageSlug = "terms" | "privacy";
+
+export type LegalPage = {
+  slug: LegalPageSlug;
+  title: string;
+  content: string | null;
+  updated_at: string;
+  updated_by: string | null;
+};
+
+export type ImageHistoryField = "logo_url" | "hero_image_url" | "about_image_url" | "favicon_url";
 
 export type ImageHistoryEntry = {
   id: string;
@@ -165,6 +176,12 @@ export type Database = {
         Row: ImageHistoryEntry;
         Insert: Partial<ImageHistoryEntry>;
         Update: Partial<ImageHistoryEntry>;
+        Relationships: never[];
+      };
+      legal_pages: {
+        Row: LegalPage;
+        Insert: Partial<LegalPage>;
+        Update: Partial<LegalPage>;
         Relationships: never[];
       };
       reviews: {
