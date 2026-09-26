@@ -272,13 +272,27 @@ export async function POST(request: NextRequest) {
     console.error("Failed to save contact submission:", dbError.message);
   }
 
-  /* Recipient: CONTACT_FORM_TO_EMAIL wins (comma-separate for several),
-     otherwise the company email edited in Admin → Site Info. There is no
-     hard-coded fallback address any more. */
-  let recipients = parseRecipients(process.env.CONTACT_FORM_TO_EMAIL);
-  if (recipients.length === 0) {
-    const { data: settings } = await supabase.from("site_settings").select("email").eq("id", 1).maybeSingle();
+  /* Recipient: the email saved in Admin → Site Info → Contact wins, so
+     changing it takes effect on the next submission with no redeploy.
+     CONTACT_FORM_TO_EMAIL is now only a fallback for when that field is
+     empty or the database can't be read. Read fresh on every request
+     (this is a POST route handler, so it is never cached). */
+  let recipients: string[] = [];
+  let businessName: string | undefined;
+  try {
+    const { data: settings, error: settingsError } = await supabase
+      .from("site_settings")
+      .select("email, business_name")
+      .eq("id", 1)
+      .maybeSingle();
+    if (settingsError) console.error("Could not read contact email from site_settings:", settingsError.message);
     recipients = parseRecipients(settings?.email);
+    businessName = settings?.business_name || undefined;
+  } catch (err) {
+    console.error("Could not read contact email from site_settings:", err instanceof Error ? err.message : err);
+  }
+  if (recipients.length === 0) {
+    recipients = parseRecipients(process.env.CONTACT_FORM_TO_EMAIL);
   }
 
   const from = process.env.CONTACT_FORM_FROM_EMAIL || "onboarding@resend.dev";
@@ -289,7 +303,7 @@ export async function POST(request: NextRequest) {
   }
 
   const result = await sendContactNotification(
-    { name: safeName, email, topic, message: safeMessage },
+    { name: safeName, email, topic, message: safeMessage, businessName },
     { recipients, from, apiKey: process.env.RESEND_API_KEY }
   );
 

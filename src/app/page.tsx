@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getSiteSettings, getNavLinks, getMenuItems } from "@/lib/data/public";
 import { createClient } from "@/lib/supabase/server";
+import { buildSeoDefaults } from "@/lib/seo-defaults";
 import SectionErrorBoundary from "@/components/shared/SectionErrorBoundary";
 import Header from "@/components/site/Header";
 import HeroStory from "@/components/site/HeroStory";
@@ -35,19 +36,20 @@ async function getActiveSnippets(location: "head" | "body_start" | "body_end") {
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
   const name = settings?.business_name || "Caffeine";
-  const description =
-    settings?.meta_description ||
-    settings?.hero_subtext ||
-    "A cozy neighborhood coffee shop serving carefully roasted beans and fresh pastries.";
+  const defaults = buildSeoDefaults(settings ?? {});
+  const description = settings?.meta_description || defaults.meta_description;
+  const title = settings?.seo_title || defaults.seo_title;
 
   return {
-    title: `${name} | ${settings?.tagline || "Cozy Craft Coffee"}`,
+    /* absolute: skip the layout's "%s | Name" template, which would
+       otherwise append the business name a second time. */
+    title: { absolute: title },
     description,
     alternates: {
       canonical: "/",
     },
     openGraph: {
-      title: name,
+      title,
       description,
       url: "/",
       siteName: name,
@@ -58,7 +60,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      title: name,
+      title,
       description,
     },
   };
@@ -102,14 +104,29 @@ async function PageBody() {
     getActiveSnippets("body_end"),
   ]);
 
-  // LocalBusiness structured data for SEO
+  // LocalBusiness structured data for SEO. Google reads this to power rich
+  // results (knowledge panel hours/phone, map cards) — it doesn't affect
+  // ranking directly, but it's what lets Google show the business
+  // correctly once it does rank.
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
+  const sameAs = [
+    settings?.social_facebook,
+    settings?.social_instagram,
+    settings?.social_twitter,
+    settings?.social_linkedin,
+  ].filter((url): url is string => Boolean(url));
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "CafeOrCoffeeShop",
+    "@id": siteUrl,
+    url: siteUrl,
     name: settings?.business_name,
+    description: settings?.meta_description || settings?.hero_subtext || undefined,
     image: settings?.hero_image_url,
     telephone: settings?.phone,
     email: settings?.email,
+    sameAs: sameAs.length > 0 ? sameAs : undefined,
     address: {
       "@type": "PostalAddress",
       streetAddress: settings?.address_line1,

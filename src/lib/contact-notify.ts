@@ -21,6 +21,9 @@ export interface NotifyInput {
   email: string;
   topic: string;
   message: string;
+  /* Optional — shown in the email header/footer. Falls back to a generic
+     label if not provided, so this stays backward compatible. */
+  businessName?: string;
 }
 
 export interface EmailClient {
@@ -66,20 +69,85 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+/* Returns two initials for the little avatar circle in the email header
+   (e.g. "Maria Lopez" -> "ML"). Falls back to "?" for empty/odd input. */
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  const first = parts[0][0] ?? "";
+  const last = parts.length > 1 ? parts[parts.length - 1][0] ?? "" : "";
+  return (first + last).toUpperCase() || "?";
+}
+
 export function buildEmail(input: NotifyInput): { subject: string; text: string; html: string } {
   const topicLabel = TOPIC_LABELS[input.topic] ?? "General question";
-  /* Subject contains only a fixed label, never visitor-supplied text. */
-  const subject = `New website message: ${topicLabel}`;
-  const text = `From: ${input.name} <${input.email}>\nTopic: ${topicLabel}\n\n${input.message}\n\n— Reply to this email to answer them directly.`;
-  const html =
-    `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;color:#1c120c">` +
-    `<h2 style="margin:0 0 4px;font-size:18px">New website message</h2>` +
-    `<p style="margin:0 0 16px;color:#6b5b4f;font-size:13px">${escapeHtml(topicLabel)}</p>` +
-    `<p style="margin:0 0 2px"><strong>${escapeHtml(input.name)}</strong></p>` +
-    `<p style="margin:0 0 16px"><a href="mailto:${escapeHtml(input.email)}">${escapeHtml(input.email)}</a></p>` +
-    `<div style="white-space:pre-wrap;border-left:3px solid #d99b26;padding:4px 0 4px 12px;font-size:15px;line-height:1.5">${escapeHtml(input.message)}</div>` +
-    `<p style="margin:20px 0 0;color:#6b5b4f;font-size:12px">Reply to this email to answer them directly.</p>` +
-    `</div>`;
+  const business = input.businessName?.trim() || "Your website";
+  /* Subject contains only a fixed label plus the sender's own name, never
+     arbitrary visitor-supplied text. */
+  const subject = `${business} — new message from ${input.name}`;
+
+  const text = `New contact form message — ${business}\n\nFrom: ${input.name} <${input.email}>\nTopic: ${topicLabel}\n\n${input.message}\n\n— Reply to this email to answer them directly.`;
+
+  const safeName = escapeHtml(input.name);
+  const safeEmail = escapeHtml(input.email);
+  const safeBusiness = escapeHtml(business);
+  const safeTopic = escapeHtml(topicLabel);
+  const safeMessage = escapeHtml(input.message);
+  const safeInitials = escapeHtml(initials(input.name));
+
+  const html = `<!doctype html>
+<html>
+  <body style="margin:0;padding:32px 16px;background:#f0e3d5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(28,18,12,0.08);">
+      <tr>
+        <td style="background:#1c120c;padding:28px 32px;">
+          <p style="margin:0;color:#d99b26;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">${safeBusiness}</p>
+          <h1 style="margin:6px 0 0;color:#ffffff;font-size:20px;font-weight:700;">New website message</h1>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:28px 32px 8px;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:44px;height:44px;border-radius:50%;background:#f0e3d5;color:#1c120c;font-weight:700;font-size:15px;text-align:center;vertical-align:middle;" align="center">
+                ${safeInitials}
+              </td>
+              <td style="padding-left:14px;">
+                <p style="margin:0;font-size:15px;font-weight:700;color:#1c120c;">${safeName}</p>
+                <p style="margin:2px 0 0;font-size:13px;">
+                  <a href="mailto:${safeEmail}" style="color:#432516;text-decoration:none;">${safeEmail}</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+          <span style="display:inline-block;margin-top:16px;padding:4px 10px;background:#f9f4ee;color:#432516;font-size:11px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;border-radius:999px;">
+            ${safeTopic}
+          </span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:16px 32px 8px;">
+          <div style="border-left:3px solid #d99b26;padding:2px 0 2px 16px;color:#291b13;font-size:15px;line-height:1.6;white-space:pre-wrap;">${safeMessage}</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:24px 32px 32px;">
+          <a href="mailto:${safeEmail}" style="display:inline-block;background:#1c120c;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 22px;border-radius:8px;">
+            Reply to ${safeName}
+          </a>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 32px 28px;border-top:1px solid #f0e3d5;">
+          <p style="margin:18px 0 0;color:#a99a8c;font-size:12px;">
+            Sent automatically from your ${safeBusiness} contact form. Change where these go anytime in Admin → Site Info → Contact.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+
   return { subject, text, html };
 }
 
@@ -94,7 +162,7 @@ export async function sendContactNotification(
   if (opts.recipients.length === 0) {
     return {
       status: "skipped",
-      reason: "No recipient configured. Set CONTACT_FORM_TO_EMAIL, or fill in the Email field in Admin → Site Info.",
+      reason: "No recipient configured. Fill in the Email field in Admin → Site Info → Contact (or set CONTACT_FORM_TO_EMAIL as a fallback).",
     };
   }
 

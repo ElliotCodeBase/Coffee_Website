@@ -105,6 +105,8 @@ create table public.site_settings (
   social_linkedin text,
   footer_copyright text,
   meta_description text,
+  favicon_url text,
+  seo_title text,
   updated_at timestamptz not null default now(),
   updated_by uuid references public.profiles(id)
 );
@@ -185,8 +187,7 @@ create table public.theme_settings (
   color_tan text default '#f0e3d5',
   color_accent text default '#432516',
   color_gold text default '#d99b26',
-  font_heading text default 'Comfortaa',
-  font_body text default 'Plus Jakarta Sans',
+  font_pairing text not null default 'comfortaa-jakarta',
   updated_at timestamptz not null default now()
 );
 
@@ -208,7 +209,7 @@ create index site_visits_created_at_idx on public.site_visits (created_at);
 -- ------------------------------------------------------------
 create table public.image_history (
   id uuid primary key default gen_random_uuid(),
-  field_name text not null check (field_name in ('logo_url', 'hero_image_url', 'about_image_url')),
+  field_name text not null check (field_name in ('logo_url', 'hero_image_url', 'about_image_url', 'favicon_url')),
   image_url text not null,
   replaced_at timestamptz not null default now()
 );

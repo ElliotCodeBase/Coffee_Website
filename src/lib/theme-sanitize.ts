@@ -5,21 +5,21 @@
    values are rejected with a message) and again on RENDER (so a bad row
    written any other way can never reach the page). */
 
+import { isFontPairingKey, findFontPairing } from "@/lib/theme-presets";
+
 const HEX_COLOR = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
-const FONT_NAME = /^[A-Za-z0-9][A-Za-z0-9 _-]{0,59}$/;
 
 export function isHexColor(value: unknown): value is string {
   return typeof value === "string" && HEX_COLOR.test(value);
-}
-
-export function isFontName(value: unknown): value is string {
-  return typeof value === "string" && FONT_NAME.test(value);
 }
 
 export function safeColor(value: unknown, fallback: string): string {
   return isHexColor(value) ? value : fallback;
 }
 
-export function safeFont(value: unknown, fallback: string): string {
-  return isFontName(value) ? value : fallback;
+/* Fonts are no longer free text (see src/lib/theme-presets.ts for why) —
+   this just confirms the saved key is one of the curated pairings, and
+   returns it unchanged so the caller can look up its CSS variables. */
+export function safeFontPairingKey(value: unknown): string {
+  return isFontPairingKey(value) ? value : findFontPairing(undefined).key;
 }

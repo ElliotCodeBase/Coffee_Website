@@ -18,16 +18,23 @@ const BASE_NAV = [
 const ADMIN_ONLY_NAV = [
   { href: "/admin", label: "Overview", icon: ADMIN_ICONS.overview },
   { href: "/admin/site-info", label: "Site Info", icon: ADMIN_ICONS.siteInfo },
+  { href: "/admin/theme", label: "Theme & Colors", icon: ADMIN_ICONS.theme },
+  { href: "/admin/legal", label: "Legal Pages", icon: ADMIN_ICONS.legal },
   { href: "/admin/staff", label: "Team", icon: ADMIN_ICONS.team },
 ];
 
 const DEV_NAV = [
-  { href: "/admin/developer/theme", label: "Theme & Design", icon: ADMIN_ICONS.theme },
   { href: "/admin/developer/code", label: "Custom Code", icon: ADMIN_ICONS.code },
   { href: "/admin/developer/users", label: "Users & Roles", icon: ADMIN_ICONS.users },
 ];
 
-export default function AdminSidebar({ role }: { role: UserRole | undefined }) {
+export default function AdminSidebar({
+  role,
+  businessName = "Caffeine",
+}: {
+  role: UserRole | undefined;
+  businessName?: string;
+}) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -68,7 +75,7 @@ export default function AdminSidebar({ role }: { role: UserRole | undefined }) {
   const sidebarContent = (
     <>
       <div className="mb-8 px-2">
-        <p className="font-cozy font-bold text-lg text-caffeine-dark">Caffeine Admin</p>
+        <p className="font-cozy font-bold text-lg text-caffeine-dark break-words">{businessName} Admin</p>
         <p className="text-xs text-stone-400 mt-0.5">{roleLabel}</p>
       </div>
 
@@ -163,7 +170,7 @@ export default function AdminSidebar({ role }: { role: UserRole | undefined }) {
       {/* Mobile top bar */}
       <div className="md:hidden sticky top-0 z-40 flex items-center justify-between bg-white border-b border-stone-200 px-4 h-14">
         <div>
-          <p className="font-cozy font-bold text-base text-caffeine-dark leading-tight">Caffeine Admin</p>
+          <p className="font-cozy font-bold text-base text-caffeine-dark leading-tight truncate max-w-[60vw]">{businessName} Admin</p>
           <p className="text-[11px] text-stone-400 leading-tight">{roleLabel}</p>
         </div>
         <button
