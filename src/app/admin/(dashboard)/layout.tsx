@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/data/auth";
+import { getSiteSettings } from "@/lib/data/public";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 
 export const metadata = {
@@ -16,9 +17,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect("/admin/login");
   }
 
+  // Cached alongside the public site's own call to getSiteSettings(), so
+  // this costs no extra query per request. Falls back to AdminSidebar's
+  // own "Caffeine" default if site_settings hasn't been configured yet.
+  const siteSettings = await getSiteSettings();
+  const businessName = siteSettings?.business_name?.trim() || undefined;
+
   return (
     <div className="md:flex bg-stone-50 min-h-screen font-body text-caffeine-dark">
-      <AdminSidebar role={user.profile?.role} />
+      <AdminSidebar role={user.profile?.role} businessName={businessName} />
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-10">{children}</main>
     </div>
   );
