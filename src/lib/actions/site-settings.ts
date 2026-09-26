@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -109,7 +109,7 @@ const EDITABLE_FIELDS = [
 /* Save the old value of an image field to image_history before it is
    replaced. This lets the user restore a previous image without
    uploading it again. */
-const TRACKED_IMAGE_FIELDS = ["logo_url", "hero_image_url", "about_image_url"] as const;
+const TRACKED_IMAGE_FIELDS = ["logo_url", "hero_image_url", "about_image_url", "favicon_url"] as const;
 
 /* Keep at most this many old versions per field. This prevents the
    image_history table from growing without limit. */
@@ -289,3 +289,4 @@ export async function updateNavLinks(links: { id: string; label: string; href: s
   revalidatePath("/admin/site-info");
   return { success: true };
 }
+
