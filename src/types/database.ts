@@ -106,6 +106,13 @@ export type SiteVisit = {
   path: string;
 };
 
+export type ContactTopic = {
+  id: string;
+  label: string;
+  sort_order: number;
+  created_at: string;
+};
+
 export type LegalPageSlug = "terms" | "privacy";
 
 export type LegalPage = {
@@ -182,6 +189,12 @@ export type Database = {
         Row: LegalPage;
         Insert: Partial<LegalPage>;
         Update: Partial<LegalPage>;
+        Relationships: never[];
+      };
+      contact_topics: {
+        Row: ContactTopic;
+        Insert: Partial<ContactTopic>;
+        Update: Partial<ContactTopic>;
         Relationships: never[];
       };
       reviews: {

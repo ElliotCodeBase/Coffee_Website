@@ -2,7 +2,7 @@
 
 import { useScrollEdges } from "@/lib/use-scroll-edges";
 import { useState } from "react";
-import type { NavLink, SiteSettings, ImageHistoryEntry, ImageHistoryField } from "@/types/database";
+import type { NavLink, SiteSettings, ImageHistoryEntry, ImageHistoryField, ContactTopic } from "@/types/database";
 import SiteInfoForm from "@/components/admin/SiteInfoForm";
 import NavLinksForm from "@/components/admin/NavLinksForm";
 
@@ -31,10 +31,12 @@ export default function SiteInfoManager({
   settings,
   navLinks,
   imageHistory,
+  contactTopics,
 }: {
   settings: SiteSettings | null;
   navLinks: NavLink[];
   imageHistory?: Record<ImageHistoryField, ImageHistoryEntry[]>;
+  contactTopics?: ContactTopic[];
 }) {
   const [tab, setTab] = useState<SiteInfoTab>("brand");
   const rail = useScrollEdges<HTMLDivElement>(TABS.length);
@@ -85,7 +87,7 @@ export default function SiteInfoManager({
         {/* Both forms stay mounted so switching tabs never discards
             half-finished edits; only visibility changes. */}
         <div className={tab === "navigation" ? "hidden" : ""}>
-          <SiteInfoForm settings={settings} imageHistory={imageHistory} activeTab={tab} />
+          <SiteInfoForm settings={settings} imageHistory={imageHistory} activeTab={tab} contactTopics={contactTopics} />
         </div>
         <div className={tab === "navigation" ? "" : "hidden"}>
           <NavLinksForm navLinks={navLinks} />

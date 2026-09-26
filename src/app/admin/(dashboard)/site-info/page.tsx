@@ -1,11 +1,12 @@
-import { getSiteSettings, getNavLinks, getImageHistory } from "@/lib/data/public";
+import { getSiteSettings, getNavLinks, getImageHistory, getContactTopics } from "@/lib/data/public";
 import SiteInfoManager from "@/components/admin/SiteInfoManager";
 
 export default async function SiteInfoPage() {
-  const [settings, navLinks, imageHistory] = await Promise.all([
+  const [settings, navLinks, imageHistory, contactTopics] = await Promise.all([
     getSiteSettings(),
     getNavLinks(),
     getImageHistory(),
+    getContactTopics(),
   ]);
 
   return (
@@ -17,7 +18,7 @@ export default async function SiteInfoPage() {
         </p>
       </div>
 
-      <SiteInfoManager settings={settings} navLinks={navLinks} imageHistory={imageHistory} />
+      <SiteInfoManager settings={settings} navLinks={navLinks} imageHistory={imageHistory} contactTopics={contactTopics} />
     </div>
   );
 }

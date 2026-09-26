@@ -19,7 +19,12 @@ export type NotifyResult =
 export interface NotifyInput {
   name: string;
   email: string;
-  topic: string;
+  /* The topic's human-readable label (e.g. "Wholesale Coffee Beans"),
+     already resolved by the caller against the current contact_topics
+     table — this module no longer hardcodes topic ids/labels, since those
+     are editable in Admin → Site Info → Contact and can change or be
+     deleted at any time. */
+  topicLabel: string;
   message: string;
   /* Optional — shown in the email header/footer. Falls back to a generic
      label if not provided, so this stays backward compatible. */
@@ -38,13 +43,6 @@ export interface EmailClient {
     }): Promise<{ data: unknown; error: { name?: string; message?: string; statusCode?: number | null } | null }>;
   };
 }
-
-const TOPIC_LABELS: Record<string, string> = {
-  general: "General question",
-  catering: "Private events & catering",
-  beans: "Wholesale coffee beans",
-  feedback: "Feedback",
-};
 
 const RECIPIENT_RE = /^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/;
 
@@ -80,7 +78,7 @@ function initials(name: string): string {
 }
 
 export function buildEmail(input: NotifyInput): { subject: string; text: string; html: string } {
-  const topicLabel = TOPIC_LABELS[input.topic] ?? "General question";
+  const topicLabel = input.topicLabel || "General question";
   const business = input.businessName?.trim() || "Your website";
   /* Subject contains only a fixed label plus the sender's own name, never
      arbitrary visitor-supplied text. */

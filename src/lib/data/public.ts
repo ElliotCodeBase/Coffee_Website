@@ -9,6 +9,7 @@ import type {
   ImageHistoryField,
   LegalPage,
   LegalPageSlug,
+  ContactTopic,
 } from "@/types/database";
 
 /* These functions run in Server Components and read only public rows.
@@ -89,6 +90,20 @@ export const getLegalPage = cache(async function getLegalPage(slug: LegalPageSlu
       return supabase.from("legal_pages").select("*").eq("slug", slug).maybeSingle();
     },
     null
+  );
+});
+
+/* The options shown in the contact form's "What is this about?" dropdown,
+   editable in Admin → Site Info → Contact. Falls back to an empty array on
+   error so the form can render its own fallback options rather than crash. */
+export const getContactTopics = cache(async function getContactTopics(): Promise<ContactTopic[]> {
+  return safeQuery(
+    "getContactTopics",
+    async () => {
+      const supabase = await createClient();
+      return supabase.from("contact_topics").select("*").order("sort_order", { ascending: true });
+    },
+    []
   );
 });
 

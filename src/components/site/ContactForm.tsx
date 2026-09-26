@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import type { ContactTopic } from "@/types/database";
 
 type Status = "idle" | "success" | "error";
 
-export default function ContactForm() {
+export default function ContactForm({ topics }: { topics: ContactTopic[] }) {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -134,10 +135,18 @@ export default function ContactForm() {
             name="topic"
             className="w-full px-4 py-3.5 text-xs sm:text-sm lg:text-base rounded-2xl border border-stone-300 bg-caffeine-cream text-caffeine-dark focus:ring-2 focus:ring-caffeine-accent focus:border-transparent outline-none transition-all"
           >
-            <option value="general">General Question</option>
-            <option value="catering">Private Events & Catering</option>
-            <option value="beans">Wholesale Coffee Beans</option>
-            <option value="feedback">Feedback</option>
+            {/* Editable in Admin → Site Info → Contact. Fallback options
+                below only ever show if that table is briefly unreachable —
+                the database is always the source of truth. */}
+            {topics.length > 0 ? (
+              topics.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))
+            ) : (
+              <option value="general">General Question</option>
+            )}
           </select>
         </div>
 

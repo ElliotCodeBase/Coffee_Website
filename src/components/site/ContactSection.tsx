@@ -1,7 +1,8 @@
 import type { SiteSettings } from "@/types/database";
 import ContactForm from "./ContactForm";
+import type { ContactTopic } from "@/types/database";
 
-export default function ContactSection({ settings }: { settings: SiteSettings | null }) {
+export default function ContactSection({ settings, topics }: { settings: SiteSettings | null; topics: ContactTopic[] }) {
   const socials = [
     { key: "facebook", url: settings?.social_facebook, label: "Facebook", icon: "fa-facebook" },
     { key: "twitter", url: settings?.social_twitter, label: "Twitter", icon: "fa-twitter" },
@@ -77,7 +78,7 @@ export default function ContactSection({ settings }: { settings: SiteSettings | 
           </div>
 
           <div className="lg:col-span-7">
-            <ContactForm />
+            <ContactForm topics={topics} />
           </div>
         </div>
       </div>

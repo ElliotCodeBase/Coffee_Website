@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { SiteSettings, ImageHistoryEntry, ImageHistoryField } from "@/types/database";
+import type { SiteSettings, ImageHistoryEntry, ImageHistoryField, ContactTopic } from "@/types/database";
 import { updateSiteSettings } from "@/lib/actions/site-settings";
 import ImageUploadField from "@/components/admin/ImageUploadField";
 import type { SiteInfoTab } from "@/components/admin/SiteInfoManager";
+import ContactTopicsManager from "@/components/admin/ContactTopicsManager";
 
 function Field({
   label,
@@ -103,10 +104,12 @@ export default function SiteInfoForm({
   settings,
   imageHistory,
   activeTab,
+  contactTopics,
 }: {
   settings: SiteSettings | null;
   imageHistory?: Record<ImageHistoryField, ImageHistoryEntry[]>;
   activeTab: SiteInfoTab;
+  contactTopics?: ContactTopic[];
 }) {
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -244,7 +247,16 @@ export default function SiteInfoForm({
       >
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Phone" name="phone" defaultValue={settings?.phone} type="tel" />
-          <Field label="Email" name="email" defaultValue={settings?.email} type="email" />
+          <Field
+            label="Email"
+            name="email"
+            defaultValue={settings?.email}
+            type="email"
+            hint="Contact-form messages are sent here. Changes apply to the next message — no redeploy needed."
+          />
+        </div>
+        <div className="pt-2">
+          <ContactTopicsManager initialTopics={contactTopics || []} />
         </div>
       </Panel>
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { getSiteSettings, getNavLinks, getMenuItems } from "@/lib/data/public";
+import { getSiteSettings, getNavLinks, getMenuItems, getContactTopics } from "@/lib/data/public";
 import { createClient } from "@/lib/supabase/server";
 import { buildSeoDefaults } from "@/lib/seo-defaults";
 import SectionErrorBoundary from "@/components/shared/SectionErrorBoundary";
@@ -97,11 +97,12 @@ function HeaderFallback() {
    briefly locked) or fails outright, that only affects this region.
    The header, above, keeps rendering and stays interactive regardless. */
 async function PageBody() {
-  const [settings, menuItems, bodyStartSnippets, bodyEndSnippets] = await Promise.all([
+  const [settings, menuItems, bodyStartSnippets, bodyEndSnippets, contactTopics] = await Promise.all([
     getSiteSettings(),
     getMenuItems(),
     getActiveSnippets("body_start"),
     getActiveSnippets("body_end"),
+    getContactTopics(),
   ]);
 
   // LocalBusiness structured data for SEO. Google reads this to power rich
@@ -165,7 +166,7 @@ async function PageBody() {
         <HeroStory settings={settings} />
         <Menu items={menuItems} />
         <LocationSection settings={settings} />
-        <ContactSection settings={settings} />
+        <ContactSection settings={settings} topics={contactTopics} />
       </main>
       <Footer settings={settings} />
       <CodeInjector snippets={bodyEndSnippets} />

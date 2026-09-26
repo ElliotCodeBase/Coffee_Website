@@ -102,7 +102,13 @@ async function isRateLimitedDurable(ip: string): Promise<boolean> {
 const contactSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(200),
   email: z.string().trim().email("Enter a valid email address").max(320),
-  topic: z.enum(["general", "catering", "beans", "feedback"]).default("general"),
+  /* Topics are editable in Admin → Site Info → Contact (contact_topics
+     table), so this can no longer be a fixed enum — any non-empty string
+     up to a sane length is accepted here, then checked against the
+     current topic list below (falls back to a generic label if the
+     submitted id doesn't match any current topic, e.g. one that was
+     since deleted). */
+  topic: z.string().trim().max(60).default("general"),
   message: z.string().trim().min(1, "Message is required").max(5000),
   recaptchaToken: z.string().optional(),
   /* Honeypot. Real visitors never see or fill this field. Checked HERE, not
@@ -279,15 +285,16 @@ export async function POST(request: NextRequest) {
      (this is a POST route handler, so it is never cached). */
   let recipients: string[] = [];
   let businessName: string | undefined;
+  let topicLabel = "General question";
   try {
-    const { data: settings, error: settingsError } = await supabase
-      .from("site_settings")
-      .select("email, business_name")
-      .eq("id", 1)
-      .maybeSingle();
+    const [{ data: settings, error: settingsError }, { data: matchedTopic }] = await Promise.all([
+      supabase.from("site_settings").select("email, business_name").eq("id", 1).maybeSingle(),
+      supabase.from("contact_topics").select("label").eq("id", topic).maybeSingle(),
+    ]);
     if (settingsError) console.error("Could not read contact email from site_settings:", settingsError.message);
     recipients = parseRecipients(settings?.email);
     businessName = settings?.business_name || undefined;
+    if (matchedTopic?.label) topicLabel = matchedTopic.label;
   } catch (err) {
     console.error("Could not read contact email from site_settings:", err instanceof Error ? err.message : err);
   }
@@ -303,7 +310,7 @@ export async function POST(request: NextRequest) {
   }
 
   const result = await sendContactNotification(
-    { name: safeName, email, topic, message: safeMessage, businessName },
+    { name: safeName, email, topicLabel, message: safeMessage, businessName },
     { recipients, from, apiKey: process.env.RESEND_API_KEY }
   );
 
