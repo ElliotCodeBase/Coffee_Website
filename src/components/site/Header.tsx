@@ -132,16 +132,8 @@ export default function Header({
           ))}
         </nav>
 
-        {/* Primary conversion CTA. Rounded-pill, solid accent fill, matching
-            the reference's top-right nav pill. Wired to the contact anchor;
-            also keeps the logo roughly centered on desktop. */}
-        <a
-          href="#contact"
-          onClick={(e) => handleNavClick(e, "#contact")}
-          className="hidden md:inline-flex shrink-0 items-center justify-center rounded-full bg-caffeine-accent hover:bg-caffeine-gold text-caffeine-dark font-bold text-xs lg:text-sm px-5 lg:px-6 py-2.5 lg:py-3 transition-colors whitespace-nowrap"
-        >
-          Get in Touch
-        </a>
+        {/* Right-hand spacer. Keeps the logo centered on desktop. */}
+        <div className="hidden md:block w-32 lg:w-40 shrink-0" />
 
         {/* Mobile hamburger button. */}
         <button

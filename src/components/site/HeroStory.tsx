@@ -3,18 +3,10 @@
 import { useEffect, useRef } from "react";
 import type { SiteSettings } from "@/types/database";
 
-/* Warm radial-gradient placeholders in the new palette, used only when
-   `settings.hero_image_url` / `about_image_url` are unset. Generated inline
-   (no external image request) so the hero reads as atmosphere behind the
-   cup art rather than competing photo detail — see redesign brief §3. */
 const FALLBACK_HERO_IMG =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='1200'%3E%3Cdefs%3E%3CradialGradient id='g' cx='58%25' cy='30%25' r='80%25'%3E%3Cstop offset='0%25' stop-color='%23ee8f49'/%3E%3Cstop offset='45%25' stop-color='%23241c15'/%3E%3Cstop offset='100%25' stop-color='%2319140f'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='1600' height='1200' fill='url(%23g)'/%3E%3C/svg%3E";
+  "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1600&q=80";
 const FALLBACK_STORY_IMG =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='1200'%3E%3Cdefs%3E%3CradialGradient id='g2' cx='30%25' cy='65%25' r='85%25'%3E%3Cstop offset='0%25' stop-color='%23f0b36b'/%3E%3Cstop offset='50%25' stop-color='%23241c15'/%3E%3Cstop offset='100%25' stop-color='%2319140f'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='1600' height='1200' fill='url(%23g2)'/%3E%3C/svg%3E";
-/* Foreground cup art — a static design asset (see brief §3), not swapped
-   by the admin, so it intentionally doesn't reuse hero_image_url's
-   settings-driven meaning. */
-const CUP_ART = "/coffee-cup-hero.png";
+  "https://images.unsplash.com/photo-1752756992329-961db6366376?auto=format&fit=crop&w=1600&q=80";
 
 const SCROLL_MULTIPLIER = 2.4;
 const EASE_FACTOR = 0.12;
@@ -39,7 +31,6 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
   const heroBodyRef = useRef<HTMLParagraphElement>(null);
   const heroCueRef = useRef<HTMLDivElement>(null);
   const heroTextBlockRef = useRef<HTMLDivElement>(null);
-  const cupRef = useRef<HTMLImageElement>(null);
 
   const storyBadgeRef = useRef<HTMLSpanElement>(null);
   const storyHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -67,13 +58,6 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
       }
       if (overlayRef.current) {
         overlayRef.current.style.opacity = String(1 - splitP * 0.7);
-      }
-      // Cup art fades and drifts upward out of frame as the split
-      // progresses, disappearing into the reveal the same way the hero
-      // text does, rather than sitting static while everything else moves.
-      if (cupRef.current) {
-        cupRef.current.style.opacity = String(1 - splitP);
-        cupRef.current.style.transform = `translateY(${-splitP * 60}px) scale(${1 - splitP * 0.08})`;
       }
 
       const badgeP = clamp(splitP / 0.55);
@@ -257,65 +241,41 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
           ref={heroTextBlockRef}
           className="absolute inset-0 flex items-center px-5 sm:px-10 lg:px-20 xl:px-32 pt-14 sm:pt-18 lg:pt-22"
         >
-          <div className="relative z-10 w-full grid lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,32rem)] items-center gap-2 lg:gap-10">
-            {/* Cup art — its own layer, faded/lifted out via splitP above.
-                pointer-events-none so it never intercepts clicks even while
-                heroTextBlockRef itself is still interactive. */}
-            <div className="order-first lg:order-last flex justify-center lg:justify-end pointer-events-none select-none">
-              <div className="relative w-40 xs:w-48 sm:w-64 lg:w-full lg:max-w-md">
-                <div
-                  aria-hidden="true"
-                  className="blob absolute -inset-6 sm:-inset-10 bg-caffeine-accent/30 blur-2xl"
-                />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  ref={cupRef}
-                  src={CUP_ART}
-                  alt=""
-                  aria-hidden="true"
-                  className="relative w-full h-auto drop-shadow-2xl will-change-transform"
-                  loading="eager"
-                />
-              </div>
-            </div>
+          <div className="relative z-10 w-full max-w-xl sm:max-w-2xl lg:max-w-3xl space-y-3 sm:space-y-5">
+            <span
+              ref={heroBadgeRef}
+              className="inline-block text-[9px] sm:text-[10px] lg:text-xs uppercase font-bold tracking-widest text-stone-100 border border-white/20 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-md will-change-transform"
+            >
+              Open Daily
+            </span>
+            <h1
+              ref={heroHeadingRef}
+              className="font-cozy text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-white leading-tight will-change-transform"
+            >
+              {settings?.hero_headline || "Good coffee, good people."}
+            </h1>
+            <p
+              ref={heroBodyRef}
+              className="text-stone-300 text-xs sm:text-sm lg:text-base xl:text-lg font-normal leading-relaxed max-w-md sm:max-w-xl will-change-transform"
+            >
+              {settings?.hero_subtext ||
+                "We keep things simple: carefully roasted beans, house-made syrups, and a warm neighborhood spot to sit back and catch your breath."}
+            </p>
 
-            <div className="max-w-xl sm:max-w-2xl lg:max-w-none space-y-3 sm:space-y-5">
-              <span
-                ref={heroBadgeRef}
-                className="inline-flex items-center gap-1.5 text-[9px] sm:text-[10px] lg:text-xs uppercase font-bold tracking-widest text-stone-100 bg-white/10 border border-white/20 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full backdrop-blur-sm will-change-transform"
+            <div
+              ref={heroCueRef}
+              className="pt-2 sm:pt-4 flex items-center gap-2 text-xs sm:text-sm lg:text-base font-bold text-stone-200"
+            >
+              <span>Scroll to read our story</span>
+              <svg
+                className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-caffeine-gold" aria-hidden="true" />
-                Open Daily
-              </span>
-              <h1
-                ref={heroHeadingRef}
-                className="font-cozy text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-white leading-[1.05] will-change-transform"
-              >
-                {settings?.hero_headline || "Good coffee, good people."}
-              </h1>
-              <p
-                ref={heroBodyRef}
-                className="text-stone-300 text-xs sm:text-sm lg:text-base xl:text-lg font-normal leading-relaxed max-w-md sm:max-w-xl will-change-transform"
-              >
-                {settings?.hero_subtext ||
-                  "We keep things simple: carefully roasted beans, house-made syrups, and a warm neighborhood spot to sit back and catch your breath."}
-              </p>
-
-              <div
-                ref={heroCueRef}
-                className="pt-2 sm:pt-4 flex items-center gap-2 text-xs sm:text-sm lg:text-base font-bold text-stone-200"
-              >
-                <span>Scroll to read our story</span>
-                <svg
-                  className="w-4 h-4 sm:w-5 sm:h-5 animate-bounce"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
-              </div>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+              </svg>
             </div>
           </div>
         </div>
@@ -329,9 +289,8 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
             <div className="max-w-xl sm:max-w-2xl lg:max-w-3xl xl:max-w-4xl space-y-4 sm:space-y-6">
               <span
                 ref={storyBadgeRef}
-                className="inline-flex items-center gap-1.5 text-[9px] sm:text-xs uppercase font-bold tracking-widest text-stone-100 bg-white/10 border border-white/20 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full backdrop-blur-sm will-change-transform"
+                className="inline-block text-[9px] sm:text-xs uppercase font-bold tracking-widest text-stone-100 border border-white/20 px-3 sm:px-4 py-1 sm:py-1.5 rounded-md will-change-transform"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-caffeine-gold" aria-hidden="true" />
                 Our Roots
               </span>
               <h2

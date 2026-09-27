@@ -121,19 +121,6 @@ export const COLOR_PALETTES = [
       color_gold: "#cfa64d",
     },
   },
-  {
-    key: "sunset-splash",
-    label: "Sunset Splash",
-    swatch: "#19140f",
-    colors: {
-      color_dark: "#19140f",
-      color_card: "#241c15",
-      color_cream: "#f8d6b4",
-      color_tan: "#f3c79c",
-      color_accent: "#ee8f49",
-      color_gold: "#f0b36b",
-    },
-  },
 ] as const;
 
 export type ColorPaletteKey = (typeof COLOR_PALETTES)[number]["key"];

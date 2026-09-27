@@ -15,12 +15,12 @@ export default async function ThemeVars() {
      here takes effect immediately with no rebuild and no runtime font API
      call: the font files were all self-hosted at build time. */
   const css = `:root {
-    --caffeine-dark: ${safeColor(theme.color_dark, "#19140f")};
-    --caffeine-card: ${safeColor(theme.color_card, "#241c15")};
-    --caffeine-cream: ${safeColor(theme.color_cream, "#f8d6b4")};
-    --caffeine-tan: ${safeColor(theme.color_tan, "#f3c79c")};
-    --caffeine-accent: ${safeColor(theme.color_accent, "#ee8f49")};
-    --caffeine-gold: ${safeColor(theme.color_gold, "#f0b36b")};
+    --caffeine-dark: ${safeColor(theme.color_dark, "#1c120c")};
+    --caffeine-card: ${safeColor(theme.color_card, "#291b13")};
+    --caffeine-cream: ${safeColor(theme.color_cream, "#f9f4ee")};
+    --caffeine-tan: ${safeColor(theme.color_tan, "#f0e3d5")};
+    --caffeine-accent: ${safeColor(theme.color_accent, "#432516")};
+    --caffeine-gold: ${safeColor(theme.color_gold, "#d99b26")};
     --font-cozy: var(${pairing.heading}), ${pairing.headingFallback};
     --font-body: var(${pairing.body}), ${pairing.bodyFallback};
   }`;
