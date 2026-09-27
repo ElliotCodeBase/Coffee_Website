@@ -36,7 +36,7 @@ export default function LocationSection({ settings }: { settings: SiteSettings |
             )}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full bg-white hover:bg-stone-200 text-caffeine-dark font-bold py-4 rounded-2xl text-center transition-colors text-sm lg:text-base flex items-center justify-center gap-2 shadow-md"
+            className="w-full bg-white hover:bg-stone-200 text-caffeine-dark font-bold py-4 rounded-full text-center transition-colors text-sm lg:text-base flex items-center justify-center gap-2 shadow-md"
           >
             <span>Open in Google Maps</span>
           </a>

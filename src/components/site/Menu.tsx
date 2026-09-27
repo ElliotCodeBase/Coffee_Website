@@ -54,7 +54,7 @@ function MenuGrid({ items, fallbackImg }: { items: MenuItem[]; fallbackImg: stri
             <h4 className="font-cozy font-bold text-[10px] leading-tight sm:text-xl lg:text-2xl text-caffeine-dark flex items-center justify-between">
               <span className="line-clamp-2 sm:line-clamp-1">{item.name}</span>
               {item.badge && (
-                <span className="hidden sm:inline-block text-[10px] sm:text-[11px] lg:text-xs bg-caffeine-tan text-caffeine-accent px-2 sm:px-2.5 py-0.5 rounded-full font-sans font-bold ml-2">
+                <span className="hidden sm:inline-block text-[10px] sm:text-[11px] lg:text-xs bg-caffeine-tan text-caffeine-dark px-2 sm:px-2.5 py-0.5 rounded-full font-sans font-bold ml-2">
                   {item.badge}
                 </span>
               )}
@@ -64,7 +64,7 @@ function MenuGrid({ items, fallbackImg }: { items: MenuItem[]; fallbackImg: stri
             </p>
           </div>
           <div className="border-t border-stone-200 pt-1 sm:pt-4 mt-1 sm:mt-0 flex justify-between items-center">
-            <span className="font-cozy font-bold text-[11px] sm:text-xl lg:text-2xl text-caffeine-accent">
+            <span className="font-cozy font-bold text-[11px] sm:text-xl lg:text-2xl text-caffeine-dark">
               ${Number(item.price).toFixed(2)}
             </span>
             <span className="hidden sm:inline-block text-[11px] sm:text-xs lg:text-sm font-medium bg-caffeine-tan text-caffeine-dark px-2.5 sm:px-3 py-1 rounded-2xl">
@@ -98,14 +98,14 @@ function MenuSlide({ item, fallbackImg }: { item: MenuItem; fallbackImg: string 
       <div className="flex flex-1 flex-col p-4">
         <h4 className="font-cozy text-lg font-bold leading-snug text-caffeine-dark">{item.name}</h4>
         {item.badge && (
-          <span className="mt-1.5 self-start rounded-full bg-caffeine-tan px-2.5 py-0.5 text-[11px] font-bold text-caffeine-accent">
+          <span className="mt-1.5 self-start rounded-full bg-caffeine-tan px-2.5 py-0.5 text-[11px] font-bold text-caffeine-dark">
             {item.badge}
           </span>
         )}
         {item.description && (
           <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-stone-600">{item.description}</p>
         )}
-        <p className="mt-auto pt-3 font-cozy text-xl font-bold text-caffeine-accent">${Number(item.price).toFixed(2)}</p>
+        <p className="mt-auto pt-3 font-cozy text-xl font-bold text-caffeine-dark">${Number(item.price).toFixed(2)}</p>
       </div>
     </article>
   );
@@ -153,7 +153,7 @@ function CategorySection({
 
       {sections.slice(0, visibleSections).map((section, idx) => (
         <div key={idx} className="mt-8 sm:mt-10 pt-8 sm:pt-10 border-t border-dashed border-caffeine-dark/15">
-          <p className="text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-accent mb-4 sm:mb-6">
+          <p className="text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-dark mb-4 sm:mb-6">
             More {title}
           </p>
           <MenuGrid items={section} fallbackImg={fallbackImg} />
@@ -166,7 +166,7 @@ function CategorySection({
             <button
               type="button"
               onClick={() => setVisibleSections((v) => v + 1)}
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-caffeine-dark bg-caffeine-cream hover:bg-white border border-stone-300 px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl transition-all active:scale-95 shadow-sm"
+              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-caffeine-dark bg-caffeine-cream hover:bg-white border border-stone-300 px-5 sm:px-6 py-2.5 sm:py-3 rounded-full transition-all active:scale-95 shadow-sm"
             >
               <span>See more</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -177,7 +177,7 @@ function CategorySection({
             <button
               type="button"
               onClick={() => setVisibleSections(0)}
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-caffeine-accent hover:text-caffeine-dark transition-colors"
+              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-caffeine-dark hover:text-stone-600 transition-colors"
             >
               <span>Show less</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -206,10 +206,17 @@ export default function Menu({ items }: { items: MenuItem[] }) {
   const pastries = sortForDisplay(items.filter((i) => i.category === "pastries"));
 
   return (
-    <section id="menu" className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 py-14 sm:py-20 lg:py-32 bg-caffeine-tan px-5 sm:px-12 lg:px-20 border-b border-stone-300">
-      <div className="max-w-screen-2xl mx-auto">
+    <section id="menu" className="relative overflow-hidden scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 py-14 sm:py-20 lg:py-32 bg-caffeine-tan px-5 sm:px-12 lg:px-20 border-b border-stone-300">
+      {/* One soft accent blob behind the section header — decorative only,
+          kept to a single instance per the brief's "spend the boldness in
+          one place" guidance. */}
+      <div
+        aria-hidden="true"
+        className="blob pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 w-[26rem] h-[26rem] bg-caffeine-accent/15 blur-3xl"
+      />
+      <div className="max-w-screen-2xl mx-auto relative">
         <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 lg:mb-20">
-          <span className="inline-block text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-accent bg-caffeine-cream/80 border border-stone-300 px-3.5 sm:px-4 py-1.5 rounded-2xl mb-3 sm:mb-4">
+          <span className="inline-block text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-dark bg-caffeine-cream/80 border border-stone-300 px-3.5 sm:px-4 py-1.5 rounded-full mb-3 sm:mb-4">
             Fresh Daily
           </span>
           <h2 className="font-cozy text-2xl sm:text-5xl lg:text-6xl font-bold text-caffeine-dark mb-3 sm:mb-4">

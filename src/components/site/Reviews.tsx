@@ -17,7 +17,7 @@ export default function Reviews({ reviews }: { reviews: Review[] }) {
       className="relative py-14 sm:py-20 lg:py-32 bg-caffeine-cream border-b border-stone-300 overflow-hidden flex flex-col justify-center"
     >
       <div className="max-w-screen-2xl mx-auto text-center mb-10 sm:mb-16 px-5 sm:px-6">
-        <span className="inline-block text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-accent bg-caffeine-tan border border-stone-300 px-3.5 sm:px-4 py-1.5 rounded-2xl mb-3 sm:mb-4">
+        <span className="inline-block text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-dark bg-caffeine-tan border border-stone-300 px-3.5 sm:px-4 py-1.5 rounded-full mb-3 sm:mb-4">
           Community Notes
         </span>
         <h2 className="font-cozy text-2xl sm:text-5xl lg:text-6xl font-bold text-caffeine-dark">
