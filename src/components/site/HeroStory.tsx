@@ -4,9 +4,16 @@ import { useEffect, useRef } from "react";
 import type { SiteSettings } from "@/types/database";
 
 const FALLBACK_HERO_IMG =
-  "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1600&q=80";
+  "https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=80";
 const FALLBACK_STORY_IMG =
   "https://images.unsplash.com/photo-1752756992329-961db6366376?auto=format&fit=crop&w=1600&q=80";
+
+/* Foreground cup-splash art layered above the diagonal hero halves (see
+   HeroStory's split mechanic below). This is a static design asset, not an
+   admin-editable field — it's a transparent foreground cutout, not a
+   full-bleed background photo, so it doesn't fit `hero_image_url`'s
+   existing meaning and isn't swapped by the admin. */
+const HERO_CUP_IMG = "/hero/coffee-cup-hero.png";
 
 const SCROLL_MULTIPLIER = 2.4;
 const EASE_FACTOR = 0.12;
@@ -23,6 +30,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
   const halfARef = useRef<HTMLDivElement>(null);
   const halfBRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const cupRef = useRef<HTMLImageElement>(null);
   const storyImgRef = useRef<HTMLDivElement>(null);
   const storyOverlayRef = useRef<HTMLDivElement>(null);
 
@@ -36,6 +44,13 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
   const storyHeadingRef = useRef<HTMLHeadingElement>(null);
   const storyBodyRef = useRef<HTMLParagraphElement>(null);
   const storyBlockRef = useRef<HTMLDivElement>(null);
+
+  function handleHeroCtaClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    const target = document.querySelector("#menu");
+    if (!target) return;
+    e.preventDefault();
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -58,6 +73,10 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
       }
       if (overlayRef.current) {
         overlayRef.current.style.opacity = String(1 - splitP * 0.7);
+      }
+      if (cupRef.current) {
+        cupRef.current.style.opacity = String(1 - splitP);
+        cupRef.current.style.transform = `translateY(${-splitP * 40}px) scale(${1 - splitP * 0.08})`;
       }
 
       const badgeP = clamp(splitP / 0.55);
@@ -236,6 +255,26 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
           className="absolute inset-0 bg-gradient-to-r from-caffeine-dark/95 via-caffeine-dark/70 to-caffeine-dark/30 will-change-[opacity]"
         />
 
+        {/* Decorative accent blob behind the cup art — one per view, per the
+            reference's "spend the boldness in one place" cue. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute right-[2%] top-1/2 -translate-y-1/2 w-[70vw] max-w-2xl aspect-square rounded-full bg-caffeine-accent/25 blur-3xl"
+        />
+
+        {/* Foreground cup-splash art. Its own layer (not part of the
+            diagonal-split background halves) so it can be a transparent
+            cutout; faded/lifted out on the same splitP curve as the hero
+            text so it disappears into the reveal rather than sitting static. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          ref={cupRef}
+          src={HERO_CUP_IMG}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:right-[2%] w-[78%] xs:w-[62%] sm:w-[52%] lg:w-[44%] xl:w-[40%] max-w-xl z-[5] will-change-transform select-none opacity-90 sm:opacity-100"
+        />
+
         {/* Hero text — mobile-first sizing */}
         <div
           ref={heroTextBlockRef}
@@ -244,7 +283,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
           <div className="relative z-10 w-full max-w-xl sm:max-w-2xl lg:max-w-3xl space-y-3 sm:space-y-5">
             <span
               ref={heroBadgeRef}
-              className="inline-block text-[9px] sm:text-[10px] lg:text-xs uppercase font-bold tracking-widest text-stone-100 border border-white/20 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-md will-change-transform"
+              className="inline-block text-[9px] sm:text-[10px] lg:text-xs uppercase font-bold tracking-widest text-stone-100 border border-white/20 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full will-change-transform"
             >
               Open Daily
             </span>
@@ -261,6 +300,14 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
               {settings?.hero_subtext ||
                 "We keep things simple: carefully roasted beans, house-made syrups, and a warm neighborhood spot to sit back and catch your breath."}
             </p>
+
+            <a
+              href="#menu"
+              onClick={(e) => handleHeroCtaClick(e)}
+              className="inline-flex items-center gap-2 bg-caffeine-accent hover:brightness-110 text-white text-xs sm:text-sm font-bold px-6 sm:px-7 py-3 sm:py-3.5 rounded-full transition-all active:scale-95 shadow-lg shadow-black/20 will-change-transform"
+            >
+              See the menu
+            </a>
 
             <div
               ref={heroCueRef}
@@ -289,7 +336,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
             <div className="max-w-xl sm:max-w-2xl lg:max-w-3xl xl:max-w-4xl space-y-4 sm:space-y-6">
               <span
                 ref={storyBadgeRef}
-                className="inline-block text-[9px] sm:text-xs uppercase font-bold tracking-widest text-stone-100 border border-white/20 px-3 sm:px-4 py-1 sm:py-1.5 rounded-md will-change-transform"
+                className="inline-block text-[9px] sm:text-xs uppercase font-bold tracking-widest text-stone-100 border border-white/20 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full will-change-transform"
               >
                 Our Roots
               </span>

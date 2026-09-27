@@ -6,12 +6,13 @@
   a <style> block that reads from the theme_settings table. See ThemeVars.tsx.
 */
 :root {
-  --caffeine-dark: #1c120c;
-  --caffeine-card: #291b13;
-  --caffeine-cream: #f9f4ee;
-  --caffeine-tan: #f0e3d5;
-  --caffeine-accent: #432516;
-  --caffeine-gold: #d99b26;
+  /* "Sunset Splash" — sampled from the coffee-splash reference mockup. */
+  --caffeine-dark: #19140f;
+  --caffeine-card: #241c15;
+  --caffeine-cream: #f8d6b4;
+  --caffeine-tan: #f3c79c;
+  --caffeine-accent: #ee8f49;
+  --caffeine-gold: #f0b36b;
   --caffeine-border: #3b2518;
   --font-cozy: "Comfortaa", cursive, sans-serif;
   --font-body: "Plus Jakarta Sans", sans-serif;

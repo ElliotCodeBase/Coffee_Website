@@ -18,6 +18,19 @@
 
 export const COLOR_PALETTES = [
   {
+    key: "sunset-splash",
+    label: "Sunset Splash",
+    swatch: "#19140f",
+    colors: {
+      color_dark: "#19140f",
+      color_card: "#241c15",
+      color_cream: "#f8d6b4",
+      color_tan: "#f3c79c",
+      color_accent: "#ee8f49",
+      color_gold: "#f0b36b",
+    },
+  },
+  {
     key: "classic-coffee",
     label: "Classic Coffee",
     swatch: "#1c120c",
