@@ -6,7 +6,6 @@ import { buildSeoDefaults } from "@/lib/seo-defaults";
 import SectionErrorBoundary from "@/components/shared/SectionErrorBoundary";
 import Header from "@/components/site/Header";
 import HeroStory from "@/components/site/HeroStory";
-import MenuShowcase from "@/components/site/MenuShowcase";
 import Menu from "@/components/site/Menu";
 import LocationSection from "@/components/site/LocationSection";
 import ContactSection from "@/components/site/ContactSection";
@@ -165,7 +164,6 @@ async function PageBody() {
       <CodeInjector snippets={bodyStartSnippets} />
       <main>
         <HeroStory settings={settings} />
-        <MenuShowcase settings={settings} items={menuItems} />
         <Menu items={menuItems} />
         <LocationSection settings={settings} />
         <ContactSection settings={settings} topics={contactTopics} />
