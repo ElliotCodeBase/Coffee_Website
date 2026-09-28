@@ -6,7 +6,7 @@ import { updateTheme } from "@/lib/actions/developer";
 import { COLOR_PALETTES, FONT_PAIRINGS, DEFAULT_FONT_PAIRING } from "@/lib/theme-presets";
 import SaveButton from "@/components/admin/SaveButton";
 
-type ColorKey = "color_dark" | "color_card" | "color_cream" | "color_tan" | "color_accent" | "color_gold";
+type ColorKey = "color_dark" | "color_card" | "color_cream" | "color_tan" | "color_accent" | "color_gold" | "color_drip";
 
 const COLOR_LABELS: Record<ColorKey, string> = {
   color_dark: "Header & footer background",
@@ -15,6 +15,7 @@ const COLOR_LABELS: Record<ColorKey, string> = {
   color_tan: "Secondary background",
   color_accent: "Buttons & links",
   color_gold: "Highlights (stars, badges)",
+  color_drip: "Milk drip under Our Story",
 };
 
 function ColorField({
@@ -62,6 +63,7 @@ export default function ThemeForm({ theme }: { theme: ThemeSettings | null }) {
     color_tan: theme?.color_tan || "#f0e3d5",
     color_accent: theme?.color_accent || "#432516",
     color_gold: theme?.color_gold || "#d99b26",
+    color_drip: theme?.color_drip || "#fff3e3",
   });
   const [activePalette, setActivePalette] = useState<string | null>(null);
   const [fontPairing, setFontPairing] = useState(theme?.font_pairing || DEFAULT_FONT_PAIRING);

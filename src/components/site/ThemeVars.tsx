@@ -21,6 +21,7 @@ export default async function ThemeVars() {
     --caffeine-tan: ${safeColor(theme.color_tan, "#f3c79c")};
     --caffeine-accent: ${safeColor(theme.color_accent, "#ee8f49")};
     --caffeine-gold: ${safeColor(theme.color_gold, "#f0b36b")};
+    --caffeine-drip: ${safeColor(theme.color_drip, "#fff3e3")};
     --font-cozy: var(${pairing.heading}), ${pairing.headingFallback};
     --font-body: var(${pairing.body}), ${pairing.bodyFallback};
   }`;

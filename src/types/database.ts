@@ -96,6 +96,7 @@ export type ThemeSettings = {
   color_tan: string;
   color_accent: string;
   color_gold: string;
+  color_drip: string | null;
   font_pairing: string;
   updated_at: string;
 };

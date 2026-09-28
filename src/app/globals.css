@@ -13,6 +13,8 @@
   --caffeine-tan: #f3c79c;
   --caffeine-accent: #ee8f49;
   --caffeine-gold: #f0b36b;
+  /* Milk-drip edge under "Our Story" — editable in Admin → Theme. */
+  --caffeine-drip: #fff3e3;
   --caffeine-border: #3b2518;
   --font-cozy: "Comfortaa", cursive, sans-serif;
   --font-body: "Plus Jakarta Sans", sans-serif;
@@ -35,6 +37,7 @@ html {
   --color-caffeine-tan: var(--caffeine-tan);
   --color-caffeine-accent: var(--caffeine-accent);
   --color-caffeine-gold: var(--caffeine-gold);
+  --color-caffeine-drip: var(--caffeine-drip);
   --color-caffeine-border: var(--caffeine-border);
   --font-cozy: var(--font-cozy);
   --font-body: var(--font-body);
@@ -154,9 +157,83 @@ body {
     }
   }
 
-  /* Cozy ambient particles — see AmbientParticles.tsx. transform + opacity
-     only, CSS animation (runs off the main thread), gated to a gentler
-     variant under reduced motion rather than removed entirely. */
+  /* ---------- Front-page motion ---------- */
+
+  /* Hero entrance: headline words rise out of a clip, body + CTA fade up.
+     `backwards` (not `both`) so once finished the element goes back to its
+     normal styles — the CTA's hover/press transforms keep working. The
+     scroll loop transforms the wrappers, never these inner elements. */
+  .hero-word {
+    animation: hero-rise 0.95s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .hero-fade {
+    animation: hero-fade-up 0.9s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  @keyframes hero-rise {
+    from { transform: translateY(110%); }
+    to { transform: translateY(0); }
+  }
+  @keyframes hero-fade-up {
+    from { opacity: 0; transform: translateY(18px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Cozy loop on the hero photo: a slow push-in and drift, on the <img>
+     inside each diagonal half (the halves themselves are moved by the
+     scroll loop). Both images run the same animation so the seam between
+     the halves never shows. */
+  .hero-drift {
+    transform-origin: 60% 45%;
+    animation: hero-drift 30s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  @keyframes hero-drift {
+    from { transform: scale(1.04) translate3d(0, 0, 0); }
+    to { transform: scale(1.13) translate3d(-1.6%, -1.2%, 0); }
+  }
+
+  /* Lamplight breathing over the panel. */
+  .hero-glow {
+    background: radial-gradient(
+      60% 55% at 72% 30%,
+      color-mix(in srgb, var(--caffeine-gold) 42%, transparent),
+      transparent 70%
+    );
+    mix-blend-mode: screen;
+    opacity: 0.25;
+    animation: hero-glow 8s ease-in-out infinite alternate;
+  }
+  @keyframes hero-glow {
+    from { opacity: 0.18; }
+    to { opacity: 0.5; }
+  }
+
+  /* Milk drip edge (see DripEdge.tsx). Stem lengthens past the resting
+     tip, a droplet pinches off and falls, the stem eases back. */
+  .drip-stem {
+    transform-box: fill-box;
+    transform-origin: 50% 0;
+    animation: drip-stem 9s ease-in-out infinite;
+  }
+  .drip-drop {
+    opacity: 0;
+    animation: drip-drop 9s cubic-bezier(0.4, 0, 0.9, 0.6) infinite;
+  }
+  @keyframes drip-stem {
+    0% { transform: scaleY(0.66); }
+    62% { transform: scaleY(1); }
+    72% { transform: scaleY(0.78); }
+    100% { transform: scaleY(0.66); }
+  }
+  @keyframes drip-drop {
+    0%, 60% { opacity: 0; transform: translateY(0); }
+    62% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(80px); }
+  }
+
+  /* Cozy ambient particles — see AmbientParticles.tsx. One fixed layer
+     over the whole page. transform + opacity only, CSS animation (runs off
+     the main thread). */
   .ambient-particle {
     position: absolute;
     border-radius: 9999px;
@@ -176,16 +253,27 @@ body {
       opacity: 0;
     }
     50% {
-      transform: translate(calc(var(--drift) * 0.5), -18px);
-      opacity: 0.45;
+      transform: translate(calc(var(--drift) * 0.5), -30px);
+      opacity: 0.6;
     }
     100% {
-      transform: translate(var(--drift), -34px);
+      transform: translate(var(--drift), -64px);
       opacity: 0;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .hero-word,
+    .hero-fade,
+    .hero-drift,
+    .hero-glow,
+    .drip-stem,
+    .drip-drop {
+      animation: none;
+    }
+    .drip-drop {
+      opacity: 0;
+    }
     .ambient-particle {
       /* Gentler, not gone: keep a slow in-place glow, drop the drift. */
       animation-name: ambient-glow;
@@ -202,4 +290,9 @@ body {
       opacity: 0.35;
     }
   }
+}
+
+/* Browser surfaces: selection and caret follow the palette. */
+::selection {
+  background: color-mix(in srgb, var(--caffeine-accent) 45%, transparent);
 }

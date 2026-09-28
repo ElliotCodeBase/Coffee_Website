@@ -1,7 +1,7 @@
 /* Curated theme presets so a non-technical client can pick a good-looking
    combination instead of guessing at hex codes.
 
-   COLOR PALETTES: each preset sets all 6 theme_settings color columns at
+   COLOR PALETTES: each preset sets all 7 theme_settings color columns at
    once. Values are still stored as plain hex in the database — presets are
    just a UI convenience for filling the existing color inputs.
 
@@ -28,6 +28,7 @@ export const COLOR_PALETTES = [
       color_tan: "#f3c79c",
       color_accent: "#ee8f49",
       color_gold: "#f0b36b",
+    color_drip: "#fcefe1",
     },
   },
   {
@@ -41,6 +42,7 @@ export const COLOR_PALETTES = [
       color_tan: "#f0e3d5",
       color_accent: "#432516",
       color_gold: "#d99b26",
+    color_drip: "#fdfbf8",
     },
   },
   {
@@ -54,6 +56,7 @@ export const COLOR_PALETTES = [
       color_tan: "#e4e5d3",
       color_accent: "#2f5138",
       color_gold: "#c9a24b",
+    color_drip: "#fbfaf6",
     },
   },
   {
@@ -67,6 +70,7 @@ export const COLOR_PALETTES = [
       color_tan: "#e7e4dd",
       color_accent: "#4a4e58",
       color_gold: "#c9974a",
+    color_drip: "#fdfdfb",
     },
   },
   {
@@ -80,6 +84,7 @@ export const COLOR_PALETTES = [
       color_tan: "#f2e1da",
       color_accent: "#7a3f4a",
       color_gold: "#e0a86a",
+    color_drip: "#fefbf9",
     },
   },
   {
@@ -93,6 +98,7 @@ export const COLOR_PALETTES = [
       color_tan: "#dfe9ec",
       color_accent: "#2c5870",
       color_gold: "#d4a441",
+    color_drip: "#fbfcfd",
     },
   },
   {
@@ -106,6 +112,7 @@ export const COLOR_PALETTES = [
       color_tan: "#f7ddc2",
       color_accent: "#a4522c",
       color_gold: "#e8a13c",
+    color_drip: "#fffaf6",
     },
   },
   {
@@ -119,6 +126,7 @@ export const COLOR_PALETTES = [
       color_tan: "#e6ddef",
       color_accent: "#5c4a75",
       color_gold: "#c9a24b",
+    color_drip: "#fcfbfd",
     },
   },
   {
@@ -132,6 +140,7 @@ export const COLOR_PALETTES = [
       color_tan: "#e3e2df",
       color_accent: "#3a3a3f",
       color_gold: "#cfa64d",
+    color_drip: "#fcfcfb",
     },
   },
 ] as const;

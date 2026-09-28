@@ -56,7 +56,7 @@ export async function updateTheme(formData: FormData): Promise<ActionResult> {
   /* Colors are written into a <style> block on every public page, so only
      strict hex values are accepted. Fonts are a curated pairing key, not
      free text — see src/lib/theme-presets.ts for why. */
-  const colorFields = ["color_dark", "color_card", "color_cream", "color_tan", "color_accent", "color_gold"] as const;
+  const colorFields = ["color_dark", "color_card", "color_cream", "color_tan", "color_accent", "color_gold", "color_drip"] as const;
   const values: Record<string, string> = {};
   for (const f of colorFields) {
     const v = String(formData.get(f) ?? "").trim();

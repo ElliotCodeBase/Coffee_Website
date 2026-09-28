@@ -187,6 +187,7 @@ create table public.theme_settings (
   color_tan text default '#f0e3d5',
   color_accent text default '#432516',
   color_gold text default '#d99b26',
+  color_drip text default '#fff3e3',
   font_pairing text not null default 'comfortaa-jakarta',
   updated_at timestamptz not null default now()
 );

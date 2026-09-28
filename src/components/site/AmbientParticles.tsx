@@ -1,12 +1,12 @@
-/* Cozy ambient dust/steam layer for the hero+about panel. Pure CSS
+/* Cozy ambient dust/steam layer for the whole page (one fixed layer,
+   mounted once in app/page.tsx). Pure CSS
    keyframes (animate skill: "cheapest tool that works" — a handful of
    floating motes is predetermined motion, not something that needs a
    JS animation loop or a library) so it costs nothing on the main
    thread and runs identically on phones and desktops.
 
    Deterministic per-index values (no Math.random): this file is
-   imported by HeroStory.tsx, a "use client" component, so it renders
-   on both the server and the browser — Math.random() here would
+   rendered on both the server and the browser — Math.random() here would
    produce different values each time and trigger a hydration mismatch.
    A sine-based pseudo-random spread is stable across both renders. */
 
@@ -21,7 +21,7 @@ type Particle = {
   drift: number; // px of horizontal wobble
 };
 
-const PARTICLE_COUNT = 14;
+const PARTICLE_COUNT = 30;
 
 function seededParticles(count: number): Particle[] {
   return Array.from({ length: count }, (_, i) => {
@@ -35,18 +35,18 @@ function seededParticles(count: number): Particle[] {
       size: 3 + frac(b) * 5,
       duration: 10 + frac(a * b) * 10,
       delay: frac(b - a) * 12,
-      drift: (frac(a + b) - 0.5) * 30,
+      drift: (frac(a + b) - 0.5) * 50,
     };
   });
 }
 
 const PARTICLES = seededParticles(PARTICLE_COUNT);
 
-export default function AmbientParticles({ className = "" }: { className?: string }) {
+export default function AmbientParticles({ className = "z-40" }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={`ambient-particles pointer-events-none absolute inset-0 overflow-hidden ${className}`}
+      className={`ambient-particles pointer-events-none fixed inset-0 overflow-hidden ${className}`}
     >
       {PARTICLES.map((p, i) => (
         <span

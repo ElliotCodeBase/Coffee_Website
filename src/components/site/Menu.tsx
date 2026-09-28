@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import type { MenuItem } from "@/types/database";
-import HScroller from "@/components/shared/HScroller";
 
 const DEFAULT_DRINK_IMG =
   "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=500&q=75";
@@ -10,7 +9,7 @@ const DEFAULT_FOOD_IMG =
   "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=500&q=75";
 
 // How many items show before the visitor has to click "See more".
-const PREVIEW_COUNT = 4;
+const PREVIEW_COUNT = 6;
 // Once expanded, items beyond the preview are grouped into extra sections
 // of this size instead of dumping everything into one huge grid.
 const SECTION_LIMIT = 8;
@@ -21,93 +20,58 @@ function chunk<T>(items: T[], size: number): T[][] {
   return pages;
 }
 
-function MenuGrid({ items, fallbackImg }: { items: MenuItem[]; fallbackImg: string }) {
+/* A menu board, not a card grid: photo, name, dotted leader, price, and a
+   line of description. Two columns on large screens, one on phones. */
+function MenuList({ items, fallbackImg }: { items: MenuItem[]; fallbackImg: string }) {
   if (items.length === 0) {
-    return <p className="text-stone-500 text-xs sm:text-sm">No items yet — check back soon.</p>;
+    return <p className="text-stone-400 text-sm">No items yet — check back soon.</p>;
   }
   return (
-    <div className="grid grid-cols-4 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-6 lg:gap-8">
-      {items.map((item) => (
-        <div
-          key={item.id}
-          className="bg-caffeine-cream p-1.5 sm:p-6 lg:p-7 rounded-lg sm:rounded-3xl border border-stone-300/80 shadow-sm flex flex-col justify-between transition-transform duration-200 ease-out hover:-translate-y-1.5 hover:shadow-xl"
-        >
-          <div>
-            <div className="relative aspect-square sm:aspect-[4/3] w-full rounded-md sm:rounded-2xl bg-stone-200 overflow-hidden mb-1.5 sm:mb-5">
+    <ul className="grid lg:grid-cols-2 gap-x-14 xl:gap-x-20 gap-y-7 sm:gap-y-9">
+      {items.map((item) => {
+        const mark = item.is_best_seller ? "Best seller" : item.is_new ? "New" : null;
+        return (
+          <li key={item.id} className="group flex gap-4 sm:gap-5">
+            <div className="relative h-20 w-20 sm:h-24 sm:w-24 shrink-0 overflow-hidden rounded-2xl bg-white/10">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={item.image_url || fallbackImg}
                 loading="lazy"
                 alt={item.name}
-                className="w-full h-full object-cover"
+                className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
               />
-              {(item.is_best_seller || item.is_new) && (
-                <span
-                  className={`absolute top-1 left-1 sm:top-2 sm:left-2 text-[7px] sm:text-[10px] font-bold uppercase px-1.5 sm:px-2.5 py-0.5 rounded-md shadow-sm ${
-                    item.is_best_seller ? "bg-caffeine-gold text-caffeine-dark" : "bg-green-500 text-white"
-                  }`}
-                >
-                  {item.is_best_seller ? "Best Seller" : "New"}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-3">
+                <h4 className="min-w-0 truncate font-cozy text-lg sm:text-xl lg:text-2xl font-bold text-white">
+                  {item.name}
+                </h4>
+                <span aria-hidden="true" className="flex-1 min-w-4 -translate-y-1 border-b border-dotted border-white/30" />
+                <span className="font-cozy text-lg sm:text-xl lg:text-2xl font-bold text-caffeine-gold tabular-nums">
+                  ${Number(item.price).toFixed(2)}
                 </span>
+              </div>
+              {(mark || item.badge) && (
+                <p className="mt-1 flex items-center gap-2 text-xs font-bold text-caffeine-gold">
+                  {mark && (
+                    <span className="flex items-center gap-1.5">
+                      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-caffeine-gold" />
+                      {mark}
+                    </span>
+                  )}
+                  {item.badge && <span className="font-normal text-stone-300">{item.badge}</span>}
+                </p>
+              )}
+              {item.description && (
+                <p className="mt-1.5 line-clamp-2 text-sm sm:text-base leading-relaxed text-stone-300">
+                  {item.description}
+                </p>
               )}
             </div>
-            <h4 className="font-cozy font-bold text-[10px] leading-tight sm:text-xl lg:text-2xl text-caffeine-dark flex items-center justify-between">
-              <span className="line-clamp-2 sm:line-clamp-1">{item.name}</span>
-              {item.badge && (
-                <span className="hidden sm:inline-block text-[10px] sm:text-[11px] lg:text-xs bg-caffeine-tan text-caffeine-accent px-2 sm:px-2.5 py-0.5 rounded-md font-sans font-bold ml-2">
-                  {item.badge}
-                </span>
-              )}
-            </h4>
-            <p className="hidden sm:block text-xs sm:text-sm lg:text-base text-stone-600 font-normal mt-1.5 sm:mt-2 mb-3 sm:mb-4 leading-relaxed">
-              {item.description}
-            </p>
-          </div>
-          <div className="border-t border-stone-200 pt-1 sm:pt-4 mt-1 sm:mt-0 flex justify-between items-center">
-            <span className="font-cozy font-bold text-[11px] sm:text-xl lg:text-2xl text-caffeine-accent">
-              ${Number(item.price).toFixed(2)}
-            </span>
-            <span className="hidden sm:inline-block text-[11px] sm:text-xs lg:text-sm font-medium bg-caffeine-tan text-caffeine-dark px-2.5 sm:px-3 py-1 rounded-lg">
-              In-Store
-            </span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* Phone layout: one readable card per item inside the shared side-scroller.
-   (The old phone layout squeezed four columns of tiny cards into the row.) */
-function MenuSlide({ item, fallbackImg }: { item: MenuItem; fallbackImg: string }) {
-  return (
-    <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-stone-300/80 bg-caffeine-cream shadow-sm">
-      <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-stone-200">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={item.image_url || fallbackImg} loading="lazy" alt={item.name} className="h-full w-full object-cover" />
-        {(item.is_best_seller || item.is_new) && (
-          <span
-            className={`absolute left-2 top-2 rounded-md px-2.5 py-0.5 text-[10px] font-bold uppercase shadow-sm ${
-              item.is_best_seller ? "bg-caffeine-gold text-caffeine-dark" : "bg-green-500 text-white"
-            }`}
-          >
-            {item.is_best_seller ? "Best Seller" : "New"}
-          </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col p-4">
-        <h4 className="font-cozy text-lg font-bold leading-snug text-caffeine-dark">{item.name}</h4>
-        {item.badge && (
-          <span className="mt-1.5 self-start rounded-md bg-caffeine-tan px-2.5 py-0.5 text-[11px] font-bold text-caffeine-accent">
-            {item.badge}
-          </span>
-        )}
-        {item.description && (
-          <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-stone-600">{item.description}</p>
-        )}
-        <p className="mt-auto pt-3 font-cozy text-xl font-bold text-caffeine-accent">${Number(item.price).toFixed(2)}</p>
-      </div>
-    </article>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -129,44 +93,26 @@ function CategorySection({
   const isExpanded = visibleSections > 0;
 
   return (
-    <div className="mb-14 sm:mb-20 lg:mb-28 last:mb-0">
-      <h3 className="font-cozy text-xl sm:text-3xl lg:text-4xl font-bold text-caffeine-dark mb-5 sm:mb-8 border-b border-caffeine-dark/20 pb-2 sm:pb-3">
+    <div className="mb-16 sm:mb-24 last:mb-0">
+      <h3 className="font-cozy text-2xl sm:text-4xl lg:text-5xl font-bold text-white mb-7 sm:mb-10 border-b border-white/15 pb-3 sm:pb-4">
         {title}
       </h3>
 
-      {/* Phones: every item in one swipeable row. */}
-      <div className="sm:hidden">
-        {items.length === 0 ? (
-          <p className="text-stone-500 text-xs">No items yet — check back soon.</p>
-        ) : (
-          <HScroller label={title}>
-            {items.map((item) => (
-              <MenuSlide key={item.id} item={item} fallbackImg={fallbackImg} />
-            ))}
-          </HScroller>
-        )}
-      </div>
-
-      {/* Tablet and up: the grid with "See more", unchanged. */}
-      <div className="hidden sm:block">
-      <MenuGrid items={preview} fallbackImg={fallbackImg} />
+      <MenuList items={preview} fallbackImg={fallbackImg} />
 
       {sections.slice(0, visibleSections).map((section, idx) => (
-        <div key={idx} className="mt-8 sm:mt-10 pt-8 sm:pt-10 border-t border-dashed border-caffeine-dark/15">
-          <p className="text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-accent mb-4 sm:mb-6">
-            More {title}
-          </p>
-          <MenuGrid items={section} fallbackImg={fallbackImg} />
+        <div key={idx} className="mt-9 sm:mt-12 pt-9 sm:pt-12 border-t border-dashed border-white/15">
+          <MenuList items={section} fallbackImg={fallbackImg} />
         </div>
       ))}
 
       {(hasMore || isExpanded) && remainder.length > 0 && (
-        <div className="flex justify-center mt-8 sm:mt-10">
+        <div className="flex justify-center mt-9 sm:mt-12">
           {hasMore ? (
             <button
               type="button"
               onClick={() => setVisibleSections((v) => v + 1)}
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-caffeine-dark bg-caffeine-cream hover:bg-white border border-stone-300 px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl transition-all active:scale-95 shadow-sm"
+              className="inline-flex items-center gap-2 text-sm font-bold text-white border border-white/30 hover:bg-white/10 px-6 py-3 rounded-full transition-[background-color,transform] active:scale-95 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold"
             >
               <span>See more</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -177,7 +123,7 @@ function CategorySection({
             <button
               type="button"
               onClick={() => setVisibleSections(0)}
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-caffeine-accent hover:text-caffeine-dark transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-bold text-caffeine-gold hover:text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold"
             >
               <span>Show less</span>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -187,7 +133,6 @@ function CategorySection({
           )}
         </div>
       )}
-      </div>
     </div>
   );
 }
@@ -206,16 +151,16 @@ export default function Menu({ items }: { items: MenuItem[] }) {
   const pastries = sortForDisplay(items.filter((i) => i.category === "pastries"));
 
   return (
-    <section id="menu" className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 py-14 sm:py-20 lg:py-32 bg-caffeine-tan px-5 sm:px-12 lg:px-20 border-b border-stone-300">
+    <section
+      id="menu"
+      className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 pt-36 sm:pt-48 lg:pt-60 pb-16 sm:pb-24 lg:pb-32 bg-caffeine-dark text-white px-5 sm:px-12 lg:px-20"
+    >
       <div className="max-w-screen-2xl mx-auto">
-        <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 lg:mb-20">
-          <span className="inline-block text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-accent bg-caffeine-cream/80 border border-stone-300 px-3.5 sm:px-4 py-1.5 rounded-lg mb-3 sm:mb-4">
-            Fresh Daily
-          </span>
-          <h2 className="font-cozy text-2xl sm:text-5xl lg:text-6xl font-bold text-caffeine-dark mb-3 sm:mb-4">
+        <div className="max-w-3xl mb-12 sm:mb-16 lg:mb-20">
+          <h2 className="font-cozy text-3xl sm:text-5xl lg:text-7xl font-bold leading-[1.05] text-balance mb-4 sm:mb-5">
             What we&apos;re serving
           </h2>
-          <p className="text-xs sm:text-lg lg:text-xl text-stone-700 font-normal">
+          <p className="text-base sm:text-lg lg:text-xl text-stone-300 leading-relaxed">
             Everything from classic morning espresso to fresh-baked croissants straight out of the oven.
           </p>
         </div>
