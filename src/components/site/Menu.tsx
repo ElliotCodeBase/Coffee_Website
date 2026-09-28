@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { MenuItem } from "@/types/database";
 import ServiceIcon from "@/components/site/ServiceIcon";
 
@@ -115,6 +115,7 @@ function sortForDisplay(list: MenuItem[]): MenuItem[] {
 export default function Menu({ items }: { items: MenuItem[] }) {
   const [active, setActive] = useState<CategoryKey>("drinks");
   const [shown, setShown] = useState(PREVIEW_COUNT);
+  const sectionRef = useRef<HTMLElement>(null);
 
   const category = CATEGORIES.find((c) => c.key === active)!;
   const list = sortForDisplay(items.filter((i) => i.category === active));
@@ -124,12 +125,26 @@ export default function Menu({ items }: { items: MenuItem[] }) {
   const canShowMore = rows.length > shown;
 
   function pick(key: CategoryKey) {
+    if (key === active) return;
     setActive(key);
     setShown(PREVIEW_COUNT);
   }
 
+  /* A shorter category (e.g. fewer pastries than drinks) makes the page
+     shorter the instant this panel swaps in. If the visitor had scrolled
+     past where the new, shorter page ends, the browser silently clamps
+     scrollY to the new max — which reads as "clicking Pastries throws you
+     to the bottom of the page". scrollIntoView({block:"nearest"}) undoes
+     that clamp by bringing the section back into view when (and only
+     when) it's no longer visible. useLayoutEffect (not useEffect) runs
+     before the browser paints, so the clamp is never actually seen. */
+  useLayoutEffect(() => {
+    sectionRef.current?.scrollIntoView({ block: "nearest" });
+  }, [active]);
+
   return (
     <section
+      ref={sectionRef}
       id="menu"
       className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 pt-40 sm:pt-52 lg:pt-64 xl:pt-72 pb-20 sm:pb-28 lg:pb-36 bg-caffeine-dark text-white px-5 sm:px-12 lg:px-20"
     >

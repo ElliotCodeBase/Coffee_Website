@@ -1,27 +1,20 @@
-/* Milk-drip edge under "Our Story".
+/* Milk-drip edge under "Our Story" — an ordinary block between the story
+   panel and the Menu (not an overlay), so its height is always real and it
+   can never be clipped by a parent or covered by the section after it.
 
-   This is an in-flow block that sits at the bottom of the pinned story
-   panel (see HeroStory.tsx), NOT an overlay hanging off it. That is what
-   fixes the old cut-off: nothing here overflows its parent, so nothing can
-   be clipped by the viewport, the next section, or an overflow rule.
-
-   - The band + drips are one SVG filled with var(--caffeine-drip), the same
-     color the story panel uses, so the panel melts straight into it. The
-     client recolors it in Admin → Theme.
-   - Drip positions, widths and lengths come from a seeded pseudo-random
-     sequence (deterministic, so server and browser render identically —
-     Math.random() would cause a hydration mismatch). Lengths are spread
-     over a wide range with a few gaps, so the edge never reads as a
-     repeating pattern.
-   - A few drips are "alive": a narrower stem slowly stretches past the
-     resting tip, a droplet pinches off and falls, the stem eases back.
-     Transform + opacity only (see .drip-* in globals.css). */
+   Deliberately dramatic: thick band, long uneven drips, a glossy highlight,
+   and a handful of "alive" drips that stretch, squash, pinch off a fat
+   drop, and fall — like the panel above is genuinely dripping onto the
+   menu. Drip geometry comes from a seeded pseudo-random sequence
+   (deterministic, so server and browser render identically — Math.random()
+   would cause a hydration mismatch). Color is var(--caffeine-drip), so the
+   client can recolor it in Admin → Theme. */
 
 const W = 1440;
-const H = 216;
-const BAND = 22; // solid milk above the drips
-const FILLET = 12; // rounded shoulder where a drip meets the band
-const SLOT = 80;
+const H = 300;
+const BAND = 34; // solid milk band above the drips
+const FILLET = 16; // rounded shoulder where a drip meets the band
+const SLOT = 74;
 
 function rng(seed: number) {
   let a = seed;
@@ -34,16 +27,16 @@ function rng(seed: number) {
 type Drip = { cx: number; w: number; len: number };
 
 function makeDrips(): Drip[] {
-  const rand = rng(7);
+  const rand = rng(11);
   const out: Drip[] = [];
   const slots = Math.floor(W / SLOT);
   for (let i = 0; i < slots; i++) {
-    // ~1 in 8 slots is left bare so the rhythm breaks up
-    if (rand() < 0.12) continue;
-    const w = 18 + rand() * 18; // 18–36
-    const cx = SLOT / 2 + i * SLOT + (rand() - 0.5) * 20;
-    // skewed toward short with the occasional long runner: 24 → 126
-    const len = Math.max(w / 2 + FILLET + 10, 24 + Math.pow(rand(), 1.7) * 102);
+    // ~1 in 9 slots left bare so the rhythm never reads as a repeat
+    if (rand() < 0.11) continue;
+    const w = 20 + rand() * 24; // 20–44
+    const cx = SLOT / 2 + i * SLOT + (rand() - 0.5) * 22;
+    // wide, skewed spread: mostly short-to-medium, several long runners
+    const len = Math.max(w / 2 + FILLET + 12, 28 + Math.pow(rand(), 1.5) * 178);
     out.push({ cx, w, len });
   }
   return out;
@@ -75,41 +68,45 @@ function buildPath(drips: Drip[]): string {
 
 const PATH = buildPath(DRIPS);
 
-/* The four longest-enough drips, spread out, come alive. */
+/* The longest drips come alive: stem stretches well past its resting tip,
+   squashing as it goes, a fat drop pinches off and falls, the stem eases
+   back. Spread across the width and given independent, slow, staggered
+   timing so they never move in step. */
 const LIVING = (() => {
-  const rand = rng(31);
-  const candidates = DRIPS.map((d, i) => ({ d, i })).filter(({ d }) => d.len >= 64);
-  const picks: typeof candidates = [];
+  const rand = rng(53);
+  const candidates = DRIPS.map((d) => d).filter((d) => d.len >= 60);
+  const picks: Drip[] = [];
   for (const c of candidates) {
-    if (picks.length >= 4) break;
-    if (picks.every((p) => Math.abs(p.d.cx - c.d.cx) > 260)) picks.push(c);
+    if (picks.length >= 7) break;
+    if (picks.every((p) => Math.abs(p.cx - c.cx) > 170)) picks.push(c);
   }
-  return picks.map(({ d }, n) => ({
+  return picks.map((d, n) => ({
     ...d,
-    extra: 18 + rand() * 12,
-    duration: 8 + rand() * 5,
-    delay: -(n * 2.7 + rand() * 2),
+    extra: 34 + rand() * 54, // how much further the stem reaches — exaggerated
+    duration: 11 + rand() * 7, // 11–18s: slow, syrupy
+    delay: -(n * 2.1 + rand() * 3),
   }));
 })();
 
 export default function DripEdge() {
   return (
-    // block-level, ordinary flow: height comes from the SVG's own intrinsic
-    // aspect ratio (viewBox), so this can never be clipped by a parent's
-    // fixed height or by the section that follows it.
     <div aria-hidden="true" className="relative block bg-caffeine-dark leading-[0]">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="block w-full h-auto"
-        style={{ fill: "var(--caffeine-drip)" }}
+        style={{ filter: "drop-shadow(0 10px 14px rgba(0,0,0,0.35))" }}
       >
-        <path d={PATH} />
+        <path d={PATH} style={{ fill: "var(--caffeine-drip)" }} />
+        {/* Glossy highlight along the top of the band. */}
+        <rect x="0" y="0" width={W} height={BAND * 0.55} fill="#fff" opacity="0.22" />
+
         {LIVING.map(({ cx, w, len, extra, duration, delay }, i) => {
-          const stemW = w * 0.62;
+          const stemW = w * 0.6;
           const stemH = len + extra;
           const tipY = BAND + stemH;
+          const dropR = stemW * 0.62;
           return (
-            <g key={i}>
+            <g key={i} style={{ fill: "var(--caffeine-drip)" }}>
               <rect
                 className="drip-stem"
                 x={cx - stemW / 2}
@@ -122,8 +119,8 @@ export default function DripEdge() {
               <circle
                 className="drip-drop"
                 cx={cx}
-                cy={tipY - stemW * 0.2}
-                r={stemW * 0.5}
+                cy={tipY - stemW * 0.25}
+                r={dropR}
                 style={{ animationDuration: `${duration}s`, animationDelay: `${delay}s` }}
               />
             </g>
