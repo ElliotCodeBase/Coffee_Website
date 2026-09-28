@@ -133,7 +133,7 @@ async function archiveOldImage(
   supabase: Awaited<ReturnType<typeof createClient>>,
   fieldName: (typeof TRACKED_IMAGE_FIELDS)[number],
   oldUrl: string | null
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; reason?: string }> {
   if (!oldUrl) return { ok: true };
 
   const { error } = await supabase.from("image_history").insert({ field_name: fieldName, image_url: oldUrl });
@@ -141,11 +141,18 @@ async function archiveOldImage(
     // Previously this only logged server-side and returned — the site
     // owner would see their new image save fine and never learn the old
     // one wasn't archived. That's exactly the "previous image doesn't
-    // save" symptom. Surface it as a warning instead of swallowing it.
-    // The most common real cause: the `image_history` table doesn't
-    // exist yet on this project (see supabase/migration_add_image_history.sql).
-    console.error(`archiveOldImage (${fieldName}) error:`, error.message);
-    return { ok: false };
+    // save" symptom. Surface it as a warning instead of swallowing it,
+    // and translate the common Postgres error codes into something a
+    // non-technical admin can act on instead of a raw driver message.
+    console.error(`archiveOldImage (${fieldName}) error:`, error.message, (error as { code?: string }).code);
+    const code = (error as { code?: string }).code;
+    const reason =
+      code === "42P01"
+        ? "the image_history table doesn't exist yet — run supabase/migration_add_image_history.sql in the Supabase SQL editor"
+        : code === "42501" || code === "PGRST301"
+          ? "your database permissions (RLS) blocked the write — check the \"admin manage image_history\" policy in Supabase"
+          : `a database error occurred (${error.message})`;
+    return { ok: false, reason };
   }
 
   /* Delete old entries beyond the limit, starting with the oldest. */
@@ -197,13 +204,17 @@ export async function updateSiteSettings(formData: FormData): Promise<ActionResu
   const { data: current } = await supabase.from("site_settings").select("*").eq("id", 1).single();
 
   let archiveFailed = false;
+  let archiveFailReason = "";
   if (current) {
     for (const field of TRACKED_IMAGE_FIELDS) {
       const oldValue = (current as SiteSettings)[field];
       const newValue = update[field];
       if (oldValue && oldValue !== newValue) {
         const result = await archiveOldImage(supabase, field, oldValue);
-        if (!result.ok) archiveFailed = true;
+        if (!result.ok) {
+          archiveFailed = true;
+          archiveFailReason = result.reason || archiveFailReason;
+        }
       }
     }
   }
@@ -223,8 +234,7 @@ export async function updateSiteSettings(formData: FormData): Promise<ActionResu
   return archiveFailed
     ? {
         success: true,
-        warning:
-          "Saved, but your previous image couldn't be added to history, so it won't be available to restore later.",
+        warning: `Saved, but your previous image wasn't added to history (won't be restorable later) — ${archiveFailReason}.`,
       }
     : { success: true };
 }
@@ -256,9 +266,13 @@ export async function restoreSiteImage(
   const currentValue = current ? (current as SiteSettings)[fieldName] : null;
 
   let archiveFailed = false;
+  let archiveFailReason = "";
   if (currentValue && currentValue !== imageUrl) {
     const result = await archiveOldImage(supabase, trackedField, currentValue);
-    if (!result.ok) archiveFailed = true;
+    if (!result.ok) {
+      archiveFailed = true;
+      archiveFailReason = result.reason || "";
+    }
   }
 
   const updatePayload = {
@@ -279,8 +293,7 @@ export async function restoreSiteImage(
   return archiveFailed
     ? {
         success: true,
-        warning:
-          "Restored, but the image it replaced couldn't be added to history, so it won't be available to restore later.",
+        warning: `Restored, but the image it replaced wasn't added to history — ${archiveFailReason}.`,
       }
     : { success: true };
 }
@@ -327,6 +340,26 @@ export async function updateNavLinks(links: { id: string; label: string; href: s
 
   revalidatePath("/");
   revalidatePath("/admin/site-info");
+  return { success: true };
+}
+
+/* Manual cleanup for the new Image History admin page — lets an admin
+   remove a single old version without waiting for the MAX_HISTORY_PER_FIELD
+   rollover in archiveOldImage above. */
+export async function deleteImageHistoryEntry(id: string): Promise<ActionResult> {
+  if (!UUID_RE.test(id)) return { error: "Invalid history entry." };
+
+  const supabase = await createClient();
+  const check = await assertCanEditSite(supabase);
+  if (!check.ok) return { error: "You do not have permission to manage image history." };
+
+  const { error } = await supabase.from("image_history").delete().eq("id", id);
+  if (error) {
+    console.error("deleteImageHistoryEntry error:", error.message);
+    return { error: "Failed to delete that entry." };
+  }
+
+  revalidatePath("/admin/image-history");
   return { success: true };
 }
 

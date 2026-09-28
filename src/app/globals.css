@@ -153,4 +153,53 @@ body {
       scroll-behavior: auto;
     }
   }
+
+  /* Cozy ambient particles — see AmbientParticles.tsx. transform + opacity
+     only, CSS animation (runs off the main thread), gated to a gentler
+     variant under reduced motion rather than removed entirely. */
+  .ambient-particle {
+    position: absolute;
+    border-radius: 9999px;
+    background: radial-gradient(circle, var(--caffeine-gold) 0%, transparent 70%);
+    opacity: 0;
+    will-change: transform, opacity;
+    animation-name: ambient-drift;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+
+  /* Loops via a fade to 0 at both ends (not a hard reset), so the motes
+     never visibly "jump" back to their start position. */
+  @keyframes ambient-drift {
+    0% {
+      transform: translate(0, 0);
+      opacity: 0;
+    }
+    50% {
+      transform: translate(calc(var(--drift) * 0.5), -18px);
+      opacity: 0.45;
+    }
+    100% {
+      transform: translate(var(--drift), -34px);
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ambient-particle {
+      /* Gentler, not gone: keep a slow in-place glow, drop the drift. */
+      animation-name: ambient-glow;
+      animation-duration: 6s !important;
+    }
+  }
+
+  @keyframes ambient-glow {
+    0%,
+    100% {
+      opacity: 0.12;
+    }
+    50% {
+      opacity: 0.35;
+    }
+  }
 }

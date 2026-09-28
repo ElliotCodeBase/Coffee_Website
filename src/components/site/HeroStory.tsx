@@ -2,9 +2,10 @@
 
 import { useEffect, useRef } from "react";
 import type { SiteSettings } from "@/types/database";
+import AmbientParticles from "@/components/site/AmbientParticles";
 
 const FALLBACK_HERO_IMG =
-  "https://images.unsplash.com/photo-1447933601403-0c6688de566e?auto=format&fit=crop&w=1600&q=80";
+  "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1600&q=80";
 const FALLBACK_STORY_IMG =
   "https://images.unsplash.com/photo-1752756992329-961db6366376?auto=format&fit=crop&w=1600&q=80";
 
@@ -209,6 +210,11 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
       <span id="about" className="absolute left-0 w-px h-px" style={{ top: "42%" }} aria-hidden="true" />
 
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-caffeine-dark">
+        {/* Cozy ambient particles — sits above the photo layers, below the
+            text (z-[8], between the cup art's z-5 and the text's z-10/20)
+            so it reads as atmosphere, never as a distraction. */}
+        <AmbientParticles className="z-[8]" />
+
         {/* Story background image */}
         <div ref={storyImgRef} className="absolute inset-0 will-change-[opacity]" style={{ opacity: 0 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}

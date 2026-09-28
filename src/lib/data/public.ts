@@ -158,3 +158,32 @@ export async function getImageHistory(): Promise<Record<ImageHistoryField, Image
   }
   return empty;
 }
+
+/* Same query as above, but for the dedicated /admin/image-history page:
+   reports *why* the list is empty (no history yet vs. the table/RLS
+   being misconfigured) instead of silently returning []. This is what
+   lets an admin actually diagnose "my previous images never save"
+   instead of guessing. */
+export type ImageHistoryDiagnostics =
+  | { status: "ok"; entries: ImageHistoryEntry[] }
+  | { status: "missing_table"; entries: never[] }
+  | { status: "denied"; entries: never[] }
+  | { status: "error"; message: string; entries: never[] };
+
+export async function getImageHistoryDiagnostics(): Promise<ImageHistoryDiagnostics> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("image_history")
+    .select("*")
+    .order("replaced_at", { ascending: false });
+
+  if (error) {
+    const code = (error as { code?: string }).code;
+    if (code === "42P01") return { status: "missing_table", entries: [] };
+    if (code === "42501" || code === "PGRST301") return { status: "denied", entries: [] };
+    console.error("getImageHistoryDiagnostics error:", error.message);
+    return { status: "error", message: error.message, entries: [] };
+  }
+
+  return { status: "ok", entries: data ?? [] };
+}

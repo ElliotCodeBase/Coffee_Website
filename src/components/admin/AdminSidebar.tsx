@@ -18,6 +18,7 @@ const BASE_NAV = [
 const ADMIN_ONLY_NAV = [
   { href: "/admin", label: "Overview", icon: ADMIN_ICONS.overview },
   { href: "/admin/site-info", label: "Site Info", icon: ADMIN_ICONS.siteInfo },
+  { href: "/admin/image-history", label: "Image History", icon: ADMIN_ICONS.history },
   { href: "/admin/services", label: "Our Services", icon: ADMIN_ICONS.services },
   { href: "/admin/theme", label: "Theme & Colors", icon: ADMIN_ICONS.theme },
   { href: "/admin/legal", label: "Legal Pages", icon: ADMIN_ICONS.legal },

@@ -2,6 +2,7 @@
 
 import { useState, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { uploadImage } from "@/lib/actions/upload";
 import { compressImage } from "@/lib/image-compress";
 import { restoreSiteImage } from "@/lib/actions/site-settings";
@@ -153,6 +154,13 @@ export default function ImageUploadField({
             ))}
           </div>
         </div>
+      )}
+      {historyFieldName && (
+        <p className="mt-3 text-xs text-stone-400">
+          <Link href="/admin/image-history" className="text-caffeine-accent hover:underline underline-offset-2">
+            See full image history →
+          </Link>
+        </p>
       )}
     </div>
   );
