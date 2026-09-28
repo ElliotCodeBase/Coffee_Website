@@ -113,12 +113,14 @@ export default function SiteInfoForm({
 }) {
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
+  const [warningMsg, setWarningMsg] = useState("");
   const [dirty, setDirty] = useState(false);
   const [metaLength, setMetaLength] = useState((settings?.meta_description || "").length);
   const [isPending, startTransition] = useTransition();
 
   function handleSubmit(formData: FormData) {
     setStatus("idle");
+    setWarningMsg("");
     startTransition(async () => {
       const result = await updateSiteSettings(formData);
       if (result.error) {
@@ -126,6 +128,7 @@ export default function SiteInfoForm({
         setErrorMsg(result.error);
       } else {
         setStatus("success");
+        setWarningMsg(result.warning || "");
         setDirty(false);
       }
     });
@@ -307,6 +310,9 @@ export default function SiteInfoForm({
 
         {status === "success" && (
           <span className="text-sm font-semibold text-green-700">Saved — your site is updated.</span>
+        )}
+        {status === "success" && warningMsg && (
+          <span className="text-sm font-semibold text-amber-600">{warningMsg}</span>
         )}
         {status === "error" && <span className="text-sm font-semibold text-red-600">{errorMsg}</span>}
         {status === "idle" && dirty && (

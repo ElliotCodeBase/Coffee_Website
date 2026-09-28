@@ -32,6 +32,7 @@ export default function ImageUploadField({
 }: Props) {
   const [url, setUrl] = useState(defaultValue || "");
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isRestoring, startRestoreTransition] = useTransition();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -42,6 +43,7 @@ export default function ImageUploadField({
     if (!file) return;
 
     setError(null);
+    setWarning(null);
 
     startTransition(async () => {
       const compressed = await compressImage(file);
@@ -60,6 +62,7 @@ export default function ImageUploadField({
   function handleRestore(historyUrl: string) {
     if (!historyFieldName) return;
     setError(null);
+    setWarning(null);
     startRestoreTransition(async () => {
       // This saves immediately (unlike the file upload above, which just
       // stages a value into the form until "Save changes" is clicked) —
@@ -70,6 +73,7 @@ export default function ImageUploadField({
         setError(result.error);
       } else {
         setUrl(historyUrl);
+        if (result.warning) setWarning(result.warning);
         router.refresh();
       }
     });
@@ -108,6 +112,7 @@ export default function ImageUploadField({
             className="hidden"
           />
           {error && <p className="text-xs text-red-600 font-medium">{error}</p>}
+          {warning && <p className="text-xs text-amber-600 font-medium">{warning}</p>}
           <p className="text-xs text-stone-400">JPG, PNG, WebP or GIF. Max 5MB. Images are cropped to 4:3.</p>
 
           {altFieldName && (

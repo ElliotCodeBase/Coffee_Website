@@ -174,7 +174,7 @@ export default function ContactForm({ topics }: { topics: ContactTopic[] }) {
         <button
           type="submit"
           disabled={isPending}
-          className="w-full bg-caffeine-dark hover:bg-caffeine-card disabled:opacity-60 text-white font-bold py-4 rounded-full transition-all shadow-lg text-xs sm:text-sm lg:text-base flex items-center justify-center gap-2"
+          className="w-full bg-caffeine-dark hover:bg-caffeine-card disabled:opacity-60 text-white font-bold py-4 rounded-xl transition-all shadow-lg text-xs sm:text-sm lg:text-base flex items-center justify-center gap-2"
         >
           <span>{isPending ? "Sending…" : "Send message"}</span>
         </button>

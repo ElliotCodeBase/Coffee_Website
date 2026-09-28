@@ -44,6 +44,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
   const storyHeadingRef = useRef<HTMLHeadingElement>(null);
   const storyBodyRef = useRef<HTMLParagraphElement>(null);
   const storyBlockRef = useRef<HTMLDivElement>(null);
+  const storyCardRef = useRef<HTMLDivElement>(null);
 
   function handleHeroCtaClick(e: React.MouseEvent<HTMLAnchorElement>) {
     const target = document.querySelector("#menu");
@@ -125,6 +126,10 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
       if (storyBodyRef.current) {
         storyBodyRef.current.style.transform = `translateY(${(1 - sBodyP) * 46}px)`;
         storyBodyRef.current.style.opacity = String(sBodyP);
+      }
+      if (storyCardRef.current) {
+        storyCardRef.current.style.transform = `translateY(${(1 - sBadgeP) * 32}px) scale(${0.94 + sBadgeP * 0.06})`;
+        storyCardRef.current.style.opacity = String(sBadgeP);
       }
       if (storyBlockRef.current) {
         storyBlockRef.current.style.pointerEvents = storyP > 0.4 ? "auto" : "none";
@@ -283,7 +288,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
           <div className="relative z-10 w-full max-w-xl sm:max-w-2xl lg:max-w-3xl space-y-3 sm:space-y-5">
             <span
               ref={heroBadgeRef}
-              className="inline-block text-[9px] sm:text-[10px] lg:text-xs uppercase font-bold tracking-widest text-stone-100 border border-white/20 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-full will-change-transform"
+              className="inline-block text-[9px] sm:text-[10px] lg:text-xs uppercase font-bold tracking-widest text-stone-100 border border-white/20 px-3 sm:px-3.5 py-1 sm:py-1.5 rounded-lg will-change-transform"
             >
               Open Daily
             </span>
@@ -304,7 +309,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
             <a
               href="#menu"
               onClick={(e) => handleHeroCtaClick(e)}
-              className="inline-flex items-center gap-2 bg-caffeine-accent hover:brightness-110 text-white text-xs sm:text-sm font-bold px-6 sm:px-7 py-3 sm:py-3.5 rounded-full transition-all active:scale-95 shadow-lg shadow-black/20 will-change-transform"
+              className="inline-flex items-center gap-2 bg-caffeine-accent hover:brightness-110 text-white text-xs sm:text-sm font-bold px-6 sm:px-7 py-3 sm:py-3.5 rounded-xl transition-all active:scale-95 shadow-lg shadow-black/20 will-change-transform"
             >
               See the menu
             </a>
@@ -332,11 +337,11 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
           ref={storyBlockRef}
           className="absolute inset-0 flex items-center px-5 sm:px-10 lg:px-20 xl:px-32"
         >
-          <div className="relative z-20 w-full max-w-screen-2xl mx-auto">
-            <div className="max-w-xl sm:max-w-2xl lg:max-w-3xl xl:max-w-4xl space-y-4 sm:space-y-6">
+          <div className="relative z-20 w-full max-w-screen-2xl mx-auto grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+            <div className="max-w-xl sm:max-w-2xl lg:max-w-none space-y-4 sm:space-y-6 order-2 lg:order-1">
               <span
                 ref={storyBadgeRef}
-                className="inline-block text-[9px] sm:text-xs uppercase font-bold tracking-widest text-stone-100 border border-white/20 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full will-change-transform"
+                className="inline-block text-[9px] sm:text-xs uppercase font-bold tracking-widest text-stone-100 border border-white/20 px-3 sm:px-4 py-1 sm:py-1.5 rounded-lg will-change-transform"
               >
                 Our Roots
               </span>
@@ -353,6 +358,25 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
                 {settings?.about_body ||
                   "We started with a simple idea: create a room where locals could slow down, put their phones away for a minute, and actually taste their coffee. What began as a handful of tables and a secondhand espresso machine has grown into a daily stop for the neighborhood — but the idea hasn't changed. We source beans in small batches, roast them ourselves, and pull every shot the same careful way whether it's your first visit or your five-hundredth. Come for the coffee, stay for the people who've made this place feel like home."}
               </p>
+            </div>
+
+            {/* Framed photo card — echoes the reference's layered photo-tile
+                motif using the same about image, plus one accent blob. */}
+            <div className="relative order-1 lg:order-2 hidden sm:block will-change-transform" ref={storyCardRef}>
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -inset-6 lg:-inset-10 rounded-full bg-caffeine-accent/20 blur-3xl"
+              />
+              <div className="relative aspect-[4/3] w-full max-w-md mx-auto rounded-2xl overflow-hidden border-4 border-caffeine-cream/10 shadow-2xl">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={storyImg}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              </div>
             </div>
           </div>
         </div>

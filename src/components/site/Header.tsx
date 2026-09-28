@@ -132,17 +132,8 @@ export default function Header({
           ))}
         </nav>
 
-        {/* Primary CTA pill, desktop only — mirrors the mobile hamburger's
-            slot so the logo stays roughly centered. */}
-        <a
-          href="#contact"
-          onClick={(e) => handleNavClick(e, "#contact")}
-          className={`hidden md:inline-flex items-center justify-center shrink-0 bg-caffeine-accent hover:brightness-110 text-white font-bold rounded-full transition-[padding,font-size] duration-500 ease-out active:scale-95 ${
-            condensed ? "text-xs px-4 py-2" : "text-xs lg:text-sm px-5 lg:px-6 py-2.5 lg:py-3"
-          }`}
-        >
-          Call to action
-        </a>
+        {/* Right-hand spacer. Keeps the logo centered on desktop. */}
+        <div className="hidden md:block w-32 lg:w-40 shrink-0" />
 
         {/* Mobile hamburger button. */}
         <button

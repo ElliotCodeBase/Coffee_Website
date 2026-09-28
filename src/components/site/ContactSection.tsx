@@ -16,7 +16,7 @@ export default function ContactSection({ settings, topics }: { settings: SiteSet
         <div className="grid lg:grid-cols-12 gap-8 lg:gap-16 items-center">
           <div className="lg:col-span-5 space-y-6 sm:space-y-8">
             <div>
-              <span className="inline-block text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-accent bg-caffeine-tan border border-stone-300 px-3.5 sm:px-4 py-1.5 rounded-2xl mb-3 sm:mb-4">
+              <span className="inline-block text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-accent bg-caffeine-tan border border-stone-300 px-3.5 sm:px-4 py-1.5 rounded-lg mb-3 sm:mb-4">
                 Drop a Line
               </span>
               <h2 className="font-cozy text-2xl sm:text-5xl lg:text-6xl font-bold text-caffeine-dark leading-tight">

@@ -2,11 +2,16 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import type { SiteSettings } from "@/types/database";
+import type { SiteSettings, ImageHistoryField } from "@/types/database";
 
 export interface ActionResult {
   success?: boolean;
   error?: string;
+  /* Non-fatal: the main save succeeded, but something secondary (e.g.
+     archiving the replaced image) failed. Surfaced so "previous versions"
+     silently going missing doesn't look like the save itself worked and
+     history is fine — see archiveOldImage below. */
+  warning?: string;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -108,8 +113,17 @@ const EDITABLE_FIELDS = [
 
 /* Save the old value of an image field to image_history before it is
    replaced. This lets the user restore a previous image without
-   uploading it again. */
-const TRACKED_IMAGE_FIELDS = ["logo_url", "hero_image_url", "about_image_url", "favicon_url"] as const;
+   uploading it again.
+
+   IMPORTANT: this list must only contain fields that are actually present
+   in EDITABLE_FIELDS/the site-info form. "favicon_url" was previously
+   listed here with no matching form field or EDITABLE_FIELDS entry, which
+   meant `update.favicon_url` was always `undefined` — so the comparison
+   below (`oldValue !== newValue`) was always true and silently archived
+   the current favicon on *every single save*, regardless of whether it
+   changed. Add a favicon uploader (and its EDITABLE_FIELDS entry) before
+   ever re-adding "favicon_url" here. */
+const TRACKED_IMAGE_FIELDS = ["logo_url", "hero_image_url", "about_image_url"] as const;
 
 /* Keep at most this many old versions per field. This prevents the
    image_history table from growing without limit. */
@@ -119,13 +133,19 @@ async function archiveOldImage(
   supabase: Awaited<ReturnType<typeof createClient>>,
   fieldName: (typeof TRACKED_IMAGE_FIELDS)[number],
   oldUrl: string | null
-) {
-  if (!oldUrl) return;
+): Promise<{ ok: boolean }> {
+  if (!oldUrl) return { ok: true };
 
   const { error } = await supabase.from("image_history").insert({ field_name: fieldName, image_url: oldUrl });
   if (error) {
+    // Previously this only logged server-side and returned — the site
+    // owner would see their new image save fine and never learn the old
+    // one wasn't archived. That's exactly the "previous image doesn't
+    // save" symptom. Surface it as a warning instead of swallowing it.
+    // The most common real cause: the `image_history` table doesn't
+    // exist yet on this project (see supabase/migration_add_image_history.sql).
     console.error(`archiveOldImage (${fieldName}) error:`, error.message);
-    return;
+    return { ok: false };
   }
 
   /* Delete old entries beyond the limit, starting with the oldest. */
@@ -139,6 +159,7 @@ async function archiveOldImage(
   if (idsToDelete.length > 0) {
     await supabase.from("image_history").delete().in("id", idsToDelete);
   }
+  return { ok: true };
 }
 
 export async function updateSiteSettings(formData: FormData): Promise<ActionResult> {
@@ -175,12 +196,14 @@ export async function updateSiteSettings(formData: FormData): Promise<ActionResu
      that are about to change so the user can restore them later. */
   const { data: current } = await supabase.from("site_settings").select("*").eq("id", 1).single();
 
+  let archiveFailed = false;
   if (current) {
     for (const field of TRACKED_IMAGE_FIELDS) {
       const oldValue = (current as SiteSettings)[field];
       const newValue = update[field];
       if (oldValue && oldValue !== newValue) {
-        await archiveOldImage(supabase, field, oldValue);
+        const result = await archiveOldImage(supabase, field, oldValue);
+        if (!result.ok) archiveFailed = true;
       }
     }
   }
@@ -197,19 +220,28 @@ export async function updateSiteSettings(formData: FormData): Promise<ActionResu
 
   revalidatePath("/");
   revalidatePath("/admin/site-info");
-  return { success: true };
+  return archiveFailed
+    ? {
+        success: true,
+        warning:
+          "Saved, but your previous image couldn't be added to history, so it won't be available to restore later.",
+      }
+    : { success: true };
 }
 
 /* Revert one image field (logo, hero, or about) to a value from
    image_history. The current value is archived first so the user can
    restore it again if needed. */
 export async function restoreSiteImage(
-  fieldName: (typeof TRACKED_IMAGE_FIELDS)[number],
+  fieldName: ImageHistoryField,
   imageUrl: string
 ): Promise<ActionResult> {
-  if (!TRACKED_IMAGE_FIELDS.includes(fieldName)) {
+  if (!(TRACKED_IMAGE_FIELDS as readonly string[]).includes(fieldName)) {
     return { error: "That field cannot be restored this way." };
   }
+  // Narrowed by the runtime check above — TRACKED_IMAGE_FIELDS is a subset
+  // of ImageHistoryField, so this cast doesn't widen anything unsafely.
+  const trackedField = fieldName as (typeof TRACKED_IMAGE_FIELDS)[number];
 
   if (!isSafeExternalUrl(imageUrl)) {
     return { error: "That image URL is not valid." };
@@ -223,8 +255,10 @@ export async function restoreSiteImage(
   const { data: current } = await supabase.from("site_settings").select("*").eq("id", 1).single();
   const currentValue = current ? (current as SiteSettings)[fieldName] : null;
 
+  let archiveFailed = false;
   if (currentValue && currentValue !== imageUrl) {
-    await archiveOldImage(supabase, fieldName, currentValue);
+    const result = await archiveOldImage(supabase, trackedField, currentValue);
+    if (!result.ok) archiveFailed = true;
   }
 
   const updatePayload = {
@@ -242,7 +276,13 @@ export async function restoreSiteImage(
 
   revalidatePath("/");
   revalidatePath("/admin/site-info");
-  return { success: true };
+  return archiveFailed
+    ? {
+        success: true,
+        warning:
+          "Restored, but the image it replaced couldn't be added to history, so it won't be available to restore later.",
+      }
+    : { success: true };
 }
 
 export async function updateNavLinks(links: { id: string; label: string; href: string }[]): Promise<ActionResult> {

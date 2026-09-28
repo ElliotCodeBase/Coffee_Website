@@ -104,9 +104,11 @@ export default async function AdminOverviewPage() {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const head = { count: "exact" as const, head: true };
 
-  const [menuTotal, menuHidden, msgNew, msgTotal, msgFailed, recent, visitsTotal, visitsWeek] = await Promise.all([
+  const [menuTotal, menuHidden, serviceTotal, serviceHidden, msgNew, msgTotal, msgFailed, recent, visitsTotal, visitsWeek] = await Promise.all([
     supabase.from("menu_items").select("*", head),
     supabase.from("menu_items").select("*", head).eq("is_available", false),
+    supabase.from("service_items").select("*", head),
+    supabase.from("service_items").select("*", head).eq("is_visible", false),
     supabase.from("contact_submissions").select("*", head).eq("status", "new"),
     supabase.from("contact_submissions").select("*", head),
     /* Errors (e.g. the email_status column doesn't exist yet) just mean "0". */
@@ -164,6 +166,15 @@ export default async function AdminOverviewPage() {
           hint={`${(msgTotal.count ?? 0).toLocaleString()} received in total`}
           highlight={newCount > 0}
         />
+        {isAdmin && (
+          <StatCard
+            href="/admin/services"
+            icon={ADMIN_ICONS.services}
+            label="Services"
+            value={serviceTotal.count ?? 0}
+            hint={(serviceHidden.count ?? 0) > 0 ? `${serviceHidden.count} hidden from the site` : "All shown on the site"}
+          />
+        )}
         {isAdmin && (
           <StatCard
             href="/admin/analytics"
@@ -227,6 +238,9 @@ export default async function AdminOverviewPage() {
           <div className="-mx-1 space-y-0.5">
             <ShortcutRow href="/admin/site-info" icon={ADMIN_ICONS.siteInfo} title="Site info" description="Logo, hero, hours, contact" />
             <ShortcutRow href="/admin/menu" icon={ADMIN_ICONS.menu} title="Menu items" description="Add, edit or hide drinks and pastries" />
+            {isAdmin && (
+              <ShortcutRow href="/admin/services" icon={ADMIN_ICONS.services} title="Our Services" description="Edit the icon grid on the front page" />
+            )}
             <ShortcutRow href="/admin/messages" icon={ADMIN_ICONS.messages} title="Messages" description="Read and reply to messages" />
             <ShortcutRow href="/admin/staff" icon={ADMIN_ICONS.team} title="Team" description="Invite admins and staff" />
             {isAdmin && (

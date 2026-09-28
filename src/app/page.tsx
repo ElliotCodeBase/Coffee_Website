@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { getSiteSettings, getNavLinks, getMenuItems, getContactTopics } from "@/lib/data/public";
+import { getSiteSettings, getNavLinks, getMenuItems, getServiceItems, getContactTopics } from "@/lib/data/public";
 import { createClient } from "@/lib/supabase/server";
 import { buildSeoDefaults } from "@/lib/seo-defaults";
 import SectionErrorBoundary from "@/components/shared/SectionErrorBoundary";
 import Header from "@/components/site/Header";
 import HeroStory from "@/components/site/HeroStory";
 import Menu from "@/components/site/Menu";
+import Services from "@/components/site/Services";
 import LocationSection from "@/components/site/LocationSection";
 import ContactSection from "@/components/site/ContactSection";
 import Footer from "@/components/site/Footer";
@@ -97,9 +98,10 @@ function HeaderFallback() {
    briefly locked) or fails outright, that only affects this region.
    The header, above, keeps rendering and stays interactive regardless. */
 async function PageBody() {
-  const [settings, menuItems, bodyStartSnippets, bodyEndSnippets, contactTopics] = await Promise.all([
+  const [settings, menuItems, serviceItems, bodyStartSnippets, bodyEndSnippets, contactTopics] = await Promise.all([
     getSiteSettings(),
     getMenuItems(),
+    getServiceItems(),
     getActiveSnippets("body_start"),
     getActiveSnippets("body_end"),
     getContactTopics(),
@@ -164,6 +166,7 @@ async function PageBody() {
       <CodeInjector snippets={bodyStartSnippets} />
       <main>
         <HeroStory settings={settings} />
+        <Services items={serviceItems} />
         <Menu items={menuItems} />
         <LocationSection settings={settings} />
         <ContactSection settings={settings} topics={contactTopics} />

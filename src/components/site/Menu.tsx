@@ -43,7 +43,7 @@ function MenuGrid({ items, fallbackImg }: { items: MenuItem[]; fallbackImg: stri
               />
               {(item.is_best_seller || item.is_new) && (
                 <span
-                  className={`absolute top-1 left-1 sm:top-2 sm:left-2 text-[7px] sm:text-[10px] font-bold uppercase px-1.5 sm:px-2.5 py-0.5 rounded-full shadow-sm ${
+                  className={`absolute top-1 left-1 sm:top-2 sm:left-2 text-[7px] sm:text-[10px] font-bold uppercase px-1.5 sm:px-2.5 py-0.5 rounded-md shadow-sm ${
                     item.is_best_seller ? "bg-caffeine-gold text-caffeine-dark" : "bg-green-500 text-white"
                   }`}
                 >
@@ -54,7 +54,7 @@ function MenuGrid({ items, fallbackImg }: { items: MenuItem[]; fallbackImg: stri
             <h4 className="font-cozy font-bold text-[10px] leading-tight sm:text-xl lg:text-2xl text-caffeine-dark flex items-center justify-between">
               <span className="line-clamp-2 sm:line-clamp-1">{item.name}</span>
               {item.badge && (
-                <span className="hidden sm:inline-block text-[10px] sm:text-[11px] lg:text-xs bg-caffeine-tan text-caffeine-accent px-2 sm:px-2.5 py-0.5 rounded-full font-sans font-bold ml-2">
+                <span className="hidden sm:inline-block text-[10px] sm:text-[11px] lg:text-xs bg-caffeine-tan text-caffeine-accent px-2 sm:px-2.5 py-0.5 rounded-md font-sans font-bold ml-2">
                   {item.badge}
                 </span>
               )}
@@ -67,7 +67,7 @@ function MenuGrid({ items, fallbackImg }: { items: MenuItem[]; fallbackImg: stri
             <span className="font-cozy font-bold text-[11px] sm:text-xl lg:text-2xl text-caffeine-accent">
               ${Number(item.price).toFixed(2)}
             </span>
-            <span className="hidden sm:inline-block text-[11px] sm:text-xs lg:text-sm font-medium bg-caffeine-tan text-caffeine-dark px-2.5 sm:px-3 py-1 rounded-2xl">
+            <span className="hidden sm:inline-block text-[11px] sm:text-xs lg:text-sm font-medium bg-caffeine-tan text-caffeine-dark px-2.5 sm:px-3 py-1 rounded-lg">
               In-Store
             </span>
           </div>
@@ -87,7 +87,7 @@ function MenuSlide({ item, fallbackImg }: { item: MenuItem; fallbackImg: string 
         <img src={item.image_url || fallbackImg} loading="lazy" alt={item.name} className="h-full w-full object-cover" />
         {(item.is_best_seller || item.is_new) && (
           <span
-            className={`absolute left-2 top-2 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase shadow-sm ${
+            className={`absolute left-2 top-2 rounded-md px-2.5 py-0.5 text-[10px] font-bold uppercase shadow-sm ${
               item.is_best_seller ? "bg-caffeine-gold text-caffeine-dark" : "bg-green-500 text-white"
             }`}
           >
@@ -98,7 +98,7 @@ function MenuSlide({ item, fallbackImg }: { item: MenuItem; fallbackImg: string 
       <div className="flex flex-1 flex-col p-4">
         <h4 className="font-cozy text-lg font-bold leading-snug text-caffeine-dark">{item.name}</h4>
         {item.badge && (
-          <span className="mt-1.5 self-start rounded-full bg-caffeine-tan px-2.5 py-0.5 text-[11px] font-bold text-caffeine-accent">
+          <span className="mt-1.5 self-start rounded-md bg-caffeine-tan px-2.5 py-0.5 text-[11px] font-bold text-caffeine-accent">
             {item.badge}
           </span>
         )}
@@ -209,7 +209,7 @@ export default function Menu({ items }: { items: MenuItem[] }) {
     <section id="menu" className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 py-14 sm:py-20 lg:py-32 bg-caffeine-tan px-5 sm:px-12 lg:px-20 border-b border-stone-300">
       <div className="max-w-screen-2xl mx-auto">
         <div className="text-center max-w-3xl mx-auto mb-10 sm:mb-16 lg:mb-20">
-          <span className="inline-block text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-accent bg-caffeine-cream/80 border border-stone-300 px-3.5 sm:px-4 py-1.5 rounded-2xl mb-3 sm:mb-4">
+          <span className="inline-block text-[11px] sm:text-xs uppercase font-bold tracking-widest text-caffeine-accent bg-caffeine-cream/80 border border-stone-300 px-3.5 sm:px-4 py-1.5 rounded-lg mb-3 sm:mb-4">
             Fresh Daily
           </span>
           <h2 className="font-cozy text-2xl sm:text-5xl lg:text-6xl font-bold text-caffeine-dark mb-3 sm:mb-4">

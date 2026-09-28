@@ -10,6 +10,7 @@ import type {
   LegalPage,
   LegalPageSlug,
   ContactTopic,
+  ServiceItem,
 } from "@/types/database";
 
 /* These functions run in Server Components and read only public rows.
@@ -113,6 +114,17 @@ export const getMenuItems = cache(async function getMenuItems(): Promise<MenuIte
     async () => {
       const supabase = await createClient();
       return supabase.from("menu_items").select("*").eq("is_available", true).order("sort_order", { ascending: true });
+    },
+    []
+  );
+});
+
+export const getServiceItems = cache(async function getServiceItems(): Promise<ServiceItem[]> {
+  return safeQuery(
+    "getServiceItems",
+    async () => {
+      const supabase = await createClient();
+      return supabase.from("service_items").select("*").eq("is_visible", true).order("sort_order", { ascending: true });
     },
     []
   );

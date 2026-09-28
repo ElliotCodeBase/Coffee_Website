@@ -132,6 +132,19 @@ export type ImageHistoryEntry = {
   replaced_at: string;
 };
 
+export type ServiceIcon = "coffee" | "pastry" | "seat" | "award" | "leaf" | "wifi";
+
+export type ServiceItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  icon: ServiceIcon;
+  sort_order: number;
+  is_visible: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Review = {
   id: string;
   author_name: string;
@@ -201,6 +214,12 @@ export type Database = {
         Row: Review;
         Insert: Partial<Review>;
         Update: Partial<Review>;
+        Relationships: never[];
+      };
+      service_items: {
+        Row: ServiceItem;
+        Insert: Partial<ServiceItem>;
+        Update: Partial<ServiceItem>;
         Relationships: never[];
       };
     };

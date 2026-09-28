@@ -216,6 +216,22 @@ create table public.image_history (
 
 create index image_history_field_idx on public.image_history (field_name, replaced_at desc);
 
+-- ------------------------------------------------------------
+-- 10. SERVICE ITEMS ("Our Services" icon/label/description grid)
+-- ------------------------------------------------------------
+create table public.service_items (
+  id uuid primary key default gen_random_uuid(),
+  title text not null,
+  description text,
+  icon text not null default 'coffee', -- key into the curated icon set, see icons.ts
+  sort_order int not null default 0,
+  is_visible boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index service_items_sort_idx on public.service_items (sort_order);
+
 -- ============================================================
 -- ROW LEVEL SECURITY (RLS)
 -- Public (anon) can READ published content only.
@@ -231,6 +247,7 @@ alter table public.custom_code_snippets enable row level security;
 alter table public.theme_settings enable row level security;
 alter table public.site_visits enable row level security;
 alter table public.image_history enable row level security;
+alter table public.service_items enable row level security;
 
 -- Helper: check current user's role
 -- `set search_path` is required on a SECURITY DEFINER function: without
@@ -321,6 +338,14 @@ create policy "admin and staff can view visits" on public.site_visits
 create policy "admin manage image_history" on public.image_history
   for all using (public.current_user_role() = any (array['admin'::user_role, 'developer'::user_role]));
 
+-- Service items ("Our Services" grid): public read visible items,
+-- ADMIN/DEVELOPER ONLY manage — deliberately excludes staff, unlike
+-- menu_items above.
+create policy "public read service_items" on public.service_items
+  for select using (is_visible = true or public.current_user_role() in ('admin','developer'));
+create policy "admin manage service_items" on public.service_items
+  for all using (public.current_user_role() in ('admin','developer'));
+
 -- ============================================================
 -- SEED DATA (matches original static template so nothing breaks)
 -- ============================================================
@@ -367,6 +392,12 @@ insert into public.menu_items (category, name, description, price, badge, image_
 update public.menu_items set is_best_seller = true where name = 'Honey Lavender Latte';
 update public.menu_items set is_new = true where name = 'Iced Matcha Latte';
 
+insert into public.service_items (title, description, icon, sort_order) values
+  ('Espresso Bar', 'Hand-pulled shots from small-batch, in-house roasted beans.', 'coffee', 0),
+  ('Fresh Pastries', 'Baked daily — croissants, muffins, and seasonal specials.', 'pastry', 1),
+  ('Cozy Seating', 'A warm room built for slowing down, working, or catching up.', 'seat', 2),
+  ('Loyalty Rewards', 'Every visit gets you closer to a free drink on us.', 'award', 3);
+
 -- Explicit, redundant safety net on top of the ALTER DEFAULT PRIVILEGES
 -- near the top of this file: guarantees every table above has the grant
 -- it needs regardless of what role/session actually executed the CREATE
@@ -378,6 +409,6 @@ grant usage, select on all sequences in schema public to authenticated, service_
 
 -- anon: read public content, write a contact message or a visit row. That's all.
 grant select on public.site_settings, public.theme_settings, public.nav_links,
-                public.menu_items, public.custom_code_snippets to anon;
+                public.menu_items, public.custom_code_snippets, public.service_items to anon;
 grant insert on public.contact_submissions to anon;
 grant insert on public.site_visits to anon;
