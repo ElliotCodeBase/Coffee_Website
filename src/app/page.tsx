@@ -6,6 +6,7 @@ import { buildSeoDefaults } from "@/lib/seo-defaults";
 import SectionErrorBoundary from "@/components/shared/SectionErrorBoundary";
 import Header from "@/components/site/Header";
 import HeroStory from "@/components/site/HeroStory";
+import DripEdge from "@/components/site/DripEdge";
 import Menu from "@/components/site/Menu";
 import Services from "@/components/site/Services";
 import LocationSection from "@/components/site/LocationSection";
@@ -167,6 +168,9 @@ async function PageBody() {
       <CodeInjector snippets={bodyStartSnippets} />
       <main>
         <HeroStory settings={settings} />
+        {/* In normal document flow (not inside the scroll-locked hero), so
+            it always has real height and can never be clipped. */}
+        <DripEdge />
         <Menu items={menuItems} />
         <LocationSection settings={settings} />
         <ContactSection settings={settings} topics={contactTopics} />

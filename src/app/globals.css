@@ -161,7 +161,7 @@ body {
 
   /* Hero entrance: headline words rise out of a clip, body + CTA fade up.
      `backwards` (not `both`) so once finished the element goes back to its
-     normal styles — the CTA's hover/press transforms keep working. The
+     normal styles and the CTA's hover/press transforms keep working. The
      scroll loop transforms the wrappers, never these inner elements. */
   .hero-word {
     animation: hero-rise 0.95s cubic-bezier(0.16, 1, 0.3, 1) backwards;
@@ -178,10 +178,9 @@ body {
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* Cozy loop on the hero photo: a slow push-in and drift, on the <img>
-     inside each diagonal half (the halves themselves are moved by the
-     scroll loop). Both images run the same animation so the seam between
-     the halves never shows. */
+  /* Cozy loop on the hero photo: slow push-in and drift on the <img> inside
+     each diagonal half (the halves themselves are moved by the scroll loop).
+     Both images run the same animation so the seam never shows. */
   .hero-drift {
     transform-origin: 60% 45%;
     animation: hero-drift 30s ease-in-out infinite alternate;
@@ -192,7 +191,7 @@ body {
     to { transform: scale(1.13) translate3d(-1.6%, -1.2%, 0); }
   }
 
-  /* Lamplight breathing over the panel. */
+  /* Lamplight breathing over the hero. */
   .hero-glow {
     background: radial-gradient(
       60% 55% at 72% 30%,
@@ -212,15 +211,19 @@ body {
   .menu-rise {
     animation: hero-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
   }
+
+  /* Our Story photo drifts gently (wrapper is moved by the scroll loop). */
   .story-float {
     animation: story-float 9s ease-in-out infinite alternate;
   }
   @keyframes story-float {
-    from { transform: translateY(0) rotate(-1.2deg); }
-    to { transform: translateY(-10px) rotate(0.4deg); }
+    from { transform: translateY(0) rotate(-2.2deg); }
+    to { transform: translateY(-10px) rotate(-0.6deg); }
   }
+
   /* Milk drip edge (see DripEdge.tsx). Stem lengthens past the resting
-     tip, a droplet pinches off and falls, the stem eases back. */
+     tip, a droplet pinches off and falls, the stem eases back. Duration and
+     delay are set per drip inline so they never move in step. */
   .drip-stem {
     transform-box: fill-box;
     transform-origin: 50% 0;
@@ -231,46 +234,52 @@ body {
     animation: drip-drop 9s cubic-bezier(0.4, 0, 0.9, 0.6) infinite;
   }
   @keyframes drip-stem {
-    0% { transform: scaleY(0.66); }
+    0% { transform: scaleY(0.62); }
     62% { transform: scaleY(1); }
     72% { transform: scaleY(0.78); }
-    100% { transform: scaleY(0.66); }
+    100% { transform: scaleY(0.62); }
   }
   @keyframes drip-drop {
     0%, 60% { opacity: 0; transform: translateY(0); }
     62% { opacity: 1; transform: translateY(0); }
-    100% { opacity: 0; transform: translateY(80px); }
+    100% { opacity: 0; transform: translateY(34px); }
   }
 
-  /* Cozy ambient particles — see AmbientParticles.tsx. One fixed layer
-     over the whole page. transform + opacity only, CSS animation (runs off
-     the main thread). */
-  .ambient-particle {
+  /* Ambient particles (see AmbientParticles.tsx). Outer .ap travels the
+     screen; inner .ap-sway sways and turns. transform + opacity only. */
+  .ap {
     position: absolute;
-    border-radius: 9999px;
-    background: radial-gradient(circle, var(--caffeine-gold) 0%, transparent 70%);
+    top: 0;
     opacity: 0;
     will-change: transform, opacity;
-    animation-name: ambient-drift;
-    animation-timing-function: ease-in-out;
+    animation-timing-function: linear;
     animation-iteration-count: infinite;
   }
-
-  /* Loops via a fade to 0 at both ends (not a hard reset), so the motes
-     never visibly "jump" back to their start position. */
-  @keyframes ambient-drift {
-    0% {
-      transform: translate(0, 0);
-      opacity: 0;
-    }
-    50% {
-      transform: translate(calc(var(--drift) * 0.5), -30px);
-      opacity: 0.6;
-    }
-    100% {
-      transform: translate(var(--drift), -64px);
-      opacity: 0;
-    }
+  .ap-fall { animation-name: ap-fall; }
+  .ap-rise { animation-name: ap-rise; }
+  .ap-sway {
+    display: block;
+    animation: ap-sway 6s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  .ap-ember {
+    background: radial-gradient(circle, var(--caffeine-gold) 0%, transparent 72%);
+  }
+  @keyframes ap-fall {
+    0% { transform: translate3d(0, -8vh, 0); opacity: 0; }
+    8% { opacity: 0.6; }
+    92% { opacity: 0.6; }
+    100% { transform: translate3d(0, 108vh, 0); opacity: 0; }
+  }
+  @keyframes ap-rise {
+    0% { transform: translate3d(0, 108vh, 0); opacity: 0; }
+    15% { opacity: 0.75; }
+    85% { opacity: 0.5; }
+    100% { transform: translate3d(0, -8vh, 0); opacity: 0; }
+  }
+  @keyframes ap-sway {
+    from { transform: translateX(calc(var(--sway) * -1)) rotate(calc(var(--rot) * -1)); }
+    to { transform: translateX(var(--sway)) rotate(var(--rot)); }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -281,31 +290,20 @@ body {
     .menu-rise,
     .story-float,
     .drip-stem,
-    .drip-drop {
+    .drip-drop,
+    .ap-sway {
       animation: none;
     }
-    .drip-drop {
-      opacity: 0;
-    }
-    .ambient-particle {
-      /* Gentler, not gone: keep a slow in-place glow, drop the drift. */
-      animation-name: ambient-glow;
-      animation-duration: 6s !important;
-    }
-  }
-
-  @keyframes ambient-glow {
-    0%,
-    100% {
-      opacity: 0.12;
-    }
-    50% {
-      opacity: 0.35;
+    /* Particles: still, faint, scattered — no travel. */
+    .ap {
+      animation: none;
+      top: var(--y);
+      opacity: 0.22;
     }
   }
 }
 
-/* Browser surfaces: selection and caret follow the palette. */
+/* Browser surfaces: selection follows the palette. */
 ::selection {
   background: color-mix(in srgb, var(--caffeine-accent) 45%, transparent);
 }

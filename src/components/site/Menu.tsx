@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { MenuItem } from "@/types/database";
+import ServiceIcon from "@/components/site/ServiceIcon";
 
 const DEFAULT_DRINK_IMG =
   "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=700&q=75";
@@ -15,9 +16,9 @@ const BATCH = 8;
 
 type CategoryKey = "drinks" | "pastries";
 
-const CATEGORIES: { key: CategoryKey; label: string; fallbackImg: string }[] = [
-  { key: "drinks", label: "Espresso & Cold Drinks", fallbackImg: DEFAULT_DRINK_IMG },
-  { key: "pastries", label: "Pastries & Morning Bites", fallbackImg: DEFAULT_FOOD_IMG },
+const CATEGORIES: { key: CategoryKey; label: string; icon: "coffee" | "pastry"; fallbackImg: string }[] = [
+  { key: "drinks", label: "Espresso & Cold Drinks", icon: "coffee", fallbackImg: DEFAULT_DRINK_IMG },
+  { key: "pastries", label: "Pastries & Morning Bites", icon: "pastry", fallbackImg: DEFAULT_FOOD_IMG },
 ];
 
 function markFor(item: MenuItem) {
@@ -130,7 +131,7 @@ export default function Menu({ items }: { items: MenuItem[] }) {
   return (
     <section
       id="menu"
-      className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 pt-36 sm:pt-48 lg:pt-60 pb-20 sm:pb-28 lg:pb-36 bg-caffeine-dark text-white px-5 sm:px-12 lg:px-20"
+      className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 pt-40 sm:pt-52 lg:pt-64 xl:pt-72 pb-20 sm:pb-28 lg:pb-36 bg-caffeine-dark text-white px-5 sm:px-12 lg:px-20"
     >
       <div className="max-w-screen-2xl mx-auto grid lg:grid-cols-12 gap-10 lg:gap-16">
         <div className="lg:col-span-4 lg:sticky lg:top-32 self-start">
@@ -141,9 +142,14 @@ export default function Menu({ items }: { items: MenuItem[] }) {
             Everything from classic morning espresso to fresh-baked croissants straight out of the oven.
           </p>
 
-          <div role="tablist" aria-label="Menu categories" className="mt-8 sm:mt-10 flex lg:flex-col gap-x-6 gap-y-1 overflow-x-auto -mx-1 px-1">
+          <div
+            role="tablist"
+            aria-label="Menu categories"
+            className="mt-8 sm:mt-10 grid grid-cols-2 lg:grid-cols-1 gap-3"
+          >
             {CATEGORIES.map((c) => {
               const isActive = c.key === active;
+              const count = items.filter((i) => i.category === c.key).length;
               return (
                 <button
                   key={c.key}
@@ -151,17 +157,36 @@ export default function Menu({ items }: { items: MenuItem[] }) {
                   type="button"
                   aria-selected={isActive}
                   onClick={() => pick(c.key)}
-                  className={`group relative shrink-0 text-left py-2 font-cozy text-lg sm:text-xl lg:text-2xl font-bold transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold ${
-                    isActive ? "text-white" : "text-stone-400 hover:text-stone-200"
+                  className={`group flex cursor-pointer flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 rounded-2xl border-2 px-4 py-3.5 lg:px-5 lg:py-4 text-left transition-[background-color,border-color,color,transform] duration-200 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold ${
+                    isActive
+                      ? "border-caffeine-drip bg-caffeine-drip text-caffeine-dark shadow-lg shadow-black/30"
+                      : "border-white/25 bg-white/[0.06] text-white hover:border-caffeine-gold hover:bg-white/[0.12] lg:hover:translate-x-1"
                   }`}
                 >
-                  {c.label}
                   <span
-                    aria-hidden="true"
-                    className={`absolute left-0 -bottom-0.5 h-0.5 w-full origin-left bg-caffeine-gold transition-transform duration-300 ease-out ${
-                      isActive ? "scale-x-100" : "scale-x-0"
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors duration-200 ${
+                      isActive ? "bg-caffeine-dark text-caffeine-drip" : "bg-white/10 text-caffeine-gold group-hover:bg-white/15"
                     }`}
-                  />
+                  >
+                    <ServiceIcon icon={c.icon} className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-cozy text-base sm:text-lg lg:text-xl font-bold leading-snug">{c.label}</span>
+                    <span className={`block text-xs sm:text-sm ${isActive ? "text-stone-700" : "text-stone-300"}`}>
+                      {count} {count === 1 ? "item" : "items"}
+                    </span>
+                  </span>
+                  <svg
+                    className={`hidden lg:block h-5 w-5 shrink-0 transition-transform duration-200 ${
+                      isActive ? "" : "group-hover:translate-x-1"
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d={isActive ? "M5 13l4 4L19 7" : "M5 12h14m0 0l-6-6m6 6l-6 6"} />
+                  </svg>
                 </button>
               );
             })}

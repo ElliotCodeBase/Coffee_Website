@@ -1,42 +1,61 @@
-/* Milk-drip edge that closes the "Our Story" panel and hangs into the
-   section below it.
+/* Milk-drip edge under "Our Story".
 
-   The fill is var(--caffeine-drip) (Admin → Theme → "Milk drip under Our
-   Story"), so the client can recolor it without a deploy.
+   This is an in-flow block that sits at the bottom of the pinned story
+   panel (see HeroStory.tsx), NOT an overlay hanging off it. That is what
+   fixes the old cut-off: nothing here overflows its parent, so nothing can
+   be clipped by the viewport, the next section, or an overflow rule.
 
-   Geometry is authored, not traced: a solid band with rounded, filleted
-   drips hanging from it. Three of the drips are "living": a narrower
-   stem slowly lengthens past the resting tip, a droplet pinches off,
-   falls, and fades, then the stem eases back. Everything animates with
-   transform + opacity only (see .drip-* in globals.css), and it sits in
-   its own layer so it never touches the hero's scroll-driven transforms. */
+   - The band + drips are one SVG filled with var(--caffeine-drip), the same
+     color the story panel uses, so the panel melts straight into it. The
+     client recolors it in Admin → Theme.
+   - Drip positions, widths and lengths come from a seeded pseudo-random
+     sequence (deterministic, so server and browser render identically —
+     Math.random() would cause a hydration mismatch). Lengths are spread
+     over a wide range with a few gaps, so the edge never reads as a
+     repeating pattern.
+   - A few drips are "alive": a narrower stem slowly stretches past the
+     resting tip, a droplet pinches off and falls, the stem eases back.
+     Transform + opacity only (see .drip-* in globals.css). */
 
 const W = 1440;
-const BAND = 56; // px of solid milk above the drips (viewBox units)
-const H = 236;
-const FILLET = 16;
+const H = 216;
+const BAND = 22; // solid milk above the drips
+const FILLET = 12; // rounded shoulder where a drip meets the band
+const SLOT = 80;
 
-// [center x, width, length below the band]
-const DRIPS: [number, number, number][] = [
-  [70, 26, 50],
-  [190, 34, 110],
-  [300, 22, 38],
-  [430, 30, 84],
-  [560, 40, 140],
-  [690, 24, 60],
-  [800, 32, 100],
-  [930, 26, 44],
-  [1050, 38, 128],
-  [1180, 24, 70],
-  [1310, 30, 96],
-  [1400, 20, 40],
-];
+function rng(seed: number) {
+  let a = seed;
+  return () => {
+    a = (a * 1664525 + 1013904223) % 4294967296;
+    return a / 4294967296;
+  };
+}
 
-function buildPath(): string {
+type Drip = { cx: number; w: number; len: number };
+
+function makeDrips(): Drip[] {
+  const rand = rng(7);
+  const out: Drip[] = [];
+  const slots = Math.floor(W / SLOT);
+  for (let i = 0; i < slots; i++) {
+    // ~1 in 8 slots is left bare so the rhythm breaks up
+    if (rand() < 0.12) continue;
+    const w = 18 + rand() * 18; // 18–36
+    const cx = SLOT / 2 + i * SLOT + (rand() - 0.5) * 20;
+    // skewed toward short with the occasional long runner: 24 → 126
+    const len = Math.max(w / 2 + FILLET + 10, 24 + Math.pow(rand(), 1.7) * 102);
+    out.push({ cx, w, len });
+  }
+  return out;
+}
+
+const DRIPS = makeDrips();
+
+function buildPath(drips: Drip[]): string {
   const parts = [`M0 0H${W}V${BAND}`];
-  [...DRIPS]
-    .sort((a, b) => b[0] - a[0])
-    .forEach(([cx, w, len]) => {
+  [...drips]
+    .sort((a, b) => b.cx - a.cx)
+    .forEach(({ cx, w, len }) => {
       const r = w / 2;
       const right = cx + r;
       const left = cx - r;
@@ -54,30 +73,39 @@ function buildPath(): string {
   return parts.join("");
 }
 
-const PATH = buildPath();
+const PATH = buildPath(DRIPS);
 
-// Which drips are alive, and how far past their resting tip they reach.
-const LIVING: { i: number; delay: number; extra: number }[] = [
-  { i: 4, delay: 0, extra: 36 },
-  { i: 8, delay: -3.2, extra: 30 },
-  { i: 1, delay: -6, extra: 34 },
-];
+/* The four longest-enough drips, spread out, come alive. */
+const LIVING = (() => {
+  const rand = rng(31);
+  const candidates = DRIPS.map((d, i) => ({ d, i })).filter(({ d }) => d.len >= 64);
+  const picks: typeof candidates = [];
+  for (const c of candidates) {
+    if (picks.length >= 4) break;
+    if (picks.every((p) => Math.abs(p.d.cx - c.d.cx) > 260)) picks.push(c);
+  }
+  return picks.map(({ d }, n) => ({
+    ...d,
+    extra: 18 + rand() * 12,
+    duration: 8 + rand() * 5,
+    delay: -(n * 2.7 + rand() * 2),
+  }));
+})();
 
 export default function DripEdge() {
   return (
-    <div
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-30 h-0 overflow-x-clip"
-    >
+    // block-level, ordinary flow: height comes from the SVG's own intrinsic
+    // aspect ratio (viewBox), so this can never be clipped by a parent's
+    // fixed height or by the section that follows it.
+    <div aria-hidden="true" className="relative block bg-caffeine-dark leading-[0]">
       <svg
         viewBox={`0 0 ${W} ${H}`}
-        className="absolute left-1/2 top-0 h-auto w-[max(100%,1000px)] max-w-none"
-        style={{ transform: `translate(-50%, -${((BAND / H) * 100).toFixed(2)}%)`, fill: "var(--caffeine-drip)" }}
+        className="block w-full h-auto"
+        style={{ fill: "var(--caffeine-drip)" }}
       >
         <path d={PATH} />
-        {LIVING.map(({ i, delay, extra }) => {
-          const [cx, w, len] = DRIPS[i];
-          const stemW = w * 0.64;
+        {LIVING.map(({ cx, w, len, extra, duration, delay }, i) => {
+          const stemW = w * 0.62;
           const stemH = len + extra;
           const tipY = BAND + stemH;
           return (
@@ -89,14 +117,14 @@ export default function DripEdge() {
                 width={stemW}
                 height={stemH + 4}
                 rx={stemW / 2}
-                style={{ animationDelay: `${delay}s` }}
+                style={{ animationDuration: `${duration}s`, animationDelay: `${delay}s` }}
               />
               <circle
                 className="drip-drop"
                 cx={cx}
-                cy={tipY - stemW * 0.3}
-                r={stemW * 0.52}
-                style={{ animationDelay: `${delay}s` }}
+                cy={tipY - stemW * 0.2}
+                r={stemW * 0.5}
+                style={{ animationDuration: `${duration}s`, animationDelay: `${delay}s` }}
               />
             </g>
           );

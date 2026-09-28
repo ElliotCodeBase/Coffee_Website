@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import type { SiteSettings } from "@/types/database";
-import DripEdge from "@/components/site/DripEdge";
 
 const FALLBACK_HERO_IMG =
   "https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&w=1600&q=80";
@@ -36,7 +35,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
   const storyHeadingRef = useRef<HTMLHeadingElement>(null);
   const storyBodyRef = useRef<HTMLParagraphElement>(null);
   const storyBlockRef = useRef<HTMLDivElement>(null);
-  const storyCardRef = useRef<HTMLDivElement>(null);
+  const storyRuleRef = useRef<HTMLSpanElement>(null);
 
   function handleHeroCtaClick(e: React.MouseEvent<HTMLAnchorElement>) {
     const target = document.querySelector("#menu");
@@ -95,7 +94,6 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
         heroTextBlockRef.current.style.pointerEvents = splitP > 0.5 ? "none" : "auto";
       }
 
-      const sCardP = clamp(storyP / 0.55);
       const sHeadingP = clamp((storyP - 0.12) / 0.55);
       const sBodyP = clamp((storyP - 0.24) / 0.55);
 
@@ -110,13 +108,12 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
         storyHeadingRef.current.style.transform = `translateY(${(1 - sHeadingP) * 56}px)`;
         storyHeadingRef.current.style.opacity = String(sHeadingP);
       }
+      if (storyRuleRef.current) {
+        storyRuleRef.current.style.transform = `scaleX(${sHeadingP})`;
+      }
       if (storyBodyRef.current) {
         storyBodyRef.current.style.transform = `translateY(${(1 - sBodyP) * 46}px)`;
         storyBodyRef.current.style.opacity = String(sBodyP);
-      }
-      if (storyCardRef.current) {
-        storyCardRef.current.style.transform = `translateY(${(1 - sCardP) * 32}px) scale(${0.94 + sCardP * 0.06})`;
-        storyCardRef.current.style.opacity = String(sCardP);
       }
       if (storyBlockRef.current) {
         storyBlockRef.current.style.pointerEvents = storyP > 0.4 ? "auto" : "none";
@@ -213,15 +210,24 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
             src={storyImg}
             alt=""
             aria-hidden="true"
-            className="absolute inset-0 w-full h-full object-cover"
+            className="hero-drift absolute inset-0 w-full h-full object-cover"
             loading="lazy"
           />
         </div>
+        {/* Dark on the text side, open on the photo side; a floor fade keeps the
+            milk drip edge clean. On phones the text spans the width, so a flat
+            wash sits under it. */}
         <div
           ref={storyOverlayRef}
-          className="absolute inset-0 bg-gradient-to-t from-caffeine-dark/95 via-caffeine-dark/70 to-caffeine-dark/40 will-change-[opacity]"
-          style={{ opacity: 0 }}
-        />
+          className="absolute inset-0 will-change-[opacity]"
+          style={{
+            opacity: 0,
+            background:
+              "linear-gradient(0deg, color-mix(in srgb, var(--caffeine-dark) 85%, transparent) 0%, transparent 38%), linear-gradient(90deg, color-mix(in srgb, var(--caffeine-dark) 94%, transparent) 0%, color-mix(in srgb, var(--caffeine-dark) 74%, transparent) 42%, color-mix(in srgb, var(--caffeine-dark) 8%, transparent) 100%)",
+          }}
+        >
+          <div className="absolute inset-0 bg-caffeine-dark/55 lg:hidden" />
+        </div>
 
         {/* Diagonal image halves. The scroll loop moves/fades these two
             wrappers; the slow "cozy" drift lives on the <img> inside each
@@ -326,59 +332,62 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
           </div>
         </div>
 
-        {/* Story text */}
+        {/* Story text: one confident column on the dark side of the photo. */}
         <div
           ref={storyBlockRef}
-          className="absolute inset-0 flex items-center px-5 sm:px-10 lg:px-20 xl:px-32 pb-24 sm:pb-28 lg:pb-32"
+          className="absolute inset-0 flex items-center px-5 sm:px-10 lg:px-20 xl:px-32 pt-16 sm:pt-20 lg:pt-24 pb-24 sm:pb-28 lg:pb-32"
         >
-          <div className="relative z-20 w-full max-w-screen-2xl mx-auto grid lg:grid-cols-12 gap-8 lg:gap-16 items-center">
-            <div className="lg:col-span-7 max-w-2xl lg:max-w-none space-y-4 sm:space-y-6">
-              <h2
-                ref={storyHeadingRef}
-                className="font-cozy text-3xl xs:text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] text-white text-balance will-change-transform"
-              >
-                {settings?.about_headline || "Built around the neighborhood."}
-              </h2>
-              <div ref={storyBodyRef} className="space-y-3 sm:space-y-4 will-change-transform">
-                <p className="font-cozy text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold leading-snug text-caffeine-drip text-pretty">
-                  {storyLead}
-                </p>
-                {storyRest && (
-                  <p className="max-w-2xl text-[clamp(0.85rem,1.9vh,1.15rem)] leading-relaxed text-stone-200 border-t border-white/15 pt-3 sm:pt-4">
-                    {storyRest}
-                  </p>
-                )}
-              </div>
-            </div>
+          <div className="relative z-20 w-full max-w-2xl xl:max-w-3xl">
+            <h2
+              ref={storyHeadingRef}
+              className="font-cozy font-bold tracking-tight leading-[1.04] text-white text-balance will-change-transform"
+              style={{ fontSize: "clamp(1.9rem, min(6.6vh, 8.4vw), 4.9rem)" }}
+            >
+              {settings?.about_headline || "Built around the neighborhood."}
+            </h2>
 
-            {/* Arched window onto the shop: the photo sits in a tall arch with a
-                second outline arch offset behind it, and floats gently. The
-                scroll loop transforms the wrapper; the float is on the inner
-                element so the two never share a transform. */}
-            <div className="relative lg:col-span-5 hidden sm:block will-change-transform" ref={storyCardRef}>
-              <div className="story-float relative mx-auto w-full max-w-[17rem] lg:max-w-sm">
-                <div
+            <span
+              ref={storyRuleRef}
+              aria-hidden="true"
+              className="mt-4 sm:mt-6 block h-1 w-20 origin-left rounded-full bg-caffeine-gold will-change-transform"
+              style={{ transform: "scaleX(0)" }}
+            />
+
+            <div ref={storyBodyRef} className="mt-4 sm:mt-6 space-y-3 sm:space-y-4 will-change-transform">
+              <p
+                className="font-cozy font-bold leading-snug text-caffeine-drip text-pretty"
+                style={{ fontSize: "clamp(1.05rem, min(3vh, 4.7vw), 1.9rem)" }}
+              >
+                {storyLead}
+              </p>
+              {storyRest && (
+                <p
+                  className="max-w-xl leading-relaxed text-stone-200"
+                  style={{ fontSize: "clamp(0.85rem, 1.95vh, 1.1rem)" }}
+                >
+                  {storyRest}
+                </p>
+              )}
+              <a
+                href="#location"
+                className="group inline-flex items-center gap-2 pt-1 text-sm sm:text-base font-bold text-caffeine-gold hover:text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold"
+              >
+                Come find us
+                <svg
+                  className="h-4 w-4 transition-transform duration-300 ease-out group-hover:translate-x-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                   aria-hidden="true"
-                  className="absolute inset-0 translate-x-4 translate-y-4 lg:translate-x-6 lg:translate-y-6 rounded-t-full rounded-b-3xl border-2 border-caffeine-gold/60"
-                />
-                <div className="relative aspect-[3/4] overflow-hidden rounded-t-full rounded-b-3xl shadow-2xl shadow-black/40">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={storyImg}
-                    alt=""
-                    aria-hidden="true"
-                    loading="lazy"
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                </div>
-              </div>
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 12h14m0 0l-6-6m6 6l-6 6" />
+                </svg>
+              </a>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Milk pours off the bottom of the story panel into the menu. */}
-      <DripEdge />
     </div>
   );
 }
