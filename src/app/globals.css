@@ -224,6 +224,41 @@ body {
     50% { opacity: 1; transform: scale(1.35); }
   }
 
+  /* ---- Our Story loops ---- */
+  /* Gold sweep that keeps gliding across the headline's last word. */
+  .story-shine {
+    color: transparent;
+    background-image: linear-gradient(100deg, var(--caffeine-gold) 0%, var(--caffeine-gold) 38%, #fff6df 50%, var(--caffeine-gold) 62%, var(--caffeine-gold) 100%);
+    background-size: 250% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    animation: story-shine 5.5s ease-in-out infinite;
+  }
+  @keyframes story-shine {
+    0% { background-position: 100% 0; }
+    60%, 100% { background-position: 0% 0; }
+  }
+  /* A soft light travelling down the rail beside the lead sentence. */
+  .story-trace {
+    animation: story-trace 4.6s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+  }
+  @keyframes story-trace {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(1400%); }
+  }
+  /* Steam curling up and dissolving. */
+  .story-wisp {
+    color: rgb(255 243 227 / 0.28);
+    opacity: 0;
+    animation: story-wisp 12s ease-in-out infinite;
+  }
+  @keyframes story-wisp {
+    0% { opacity: 0; transform: translateY(40px) scaleX(0.9); }
+    20% { opacity: 1; }
+    60% { opacity: 0.6; transform: translateY(-140px) scaleX(1.15); }
+    100% { opacity: 0; transform: translateY(-300px) scaleX(0.85); }
+  }
+
   /* Milk drip edge motion lives in DripEdge.tsx (SVG SMIL), so it can keep
      the stem and the falling drop on one clock. */
 
@@ -236,7 +271,10 @@ body {
     .hero-drift,
     .hero-glow,
     .menu-rise,
-    .story-kicker-dot {
+    .story-kicker-dot,
+    .story-shine,
+    .story-trace,
+    .story-wisp {
       animation: none;
     }
   }

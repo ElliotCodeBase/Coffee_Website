@@ -39,8 +39,6 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
   const storyBlockRef = useRef<HTMLDivElement>(null);
   const storyRuleRef = useRef<HTMLSpanElement>(null);
   const storyImgParallaxRef = useRef<HTMLDivElement>(null);
-  const storyArchRef = useRef<HTMLDivElement>(null);
-  const storyArchImgRef = useRef<HTMLDivElement>(null);
 
   function handleHeroCtaClick(e: React.MouseEvent<HTMLAnchorElement>) {
     const target = document.querySelector("#menu");
@@ -120,16 +118,6 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
       if (storyOverlayRef.current) {
         storyOverlayRef.current.style.opacity = String(storyP);
       }
-      // Arched photo (wide screens): rises and fades in a beat after the
-      // text starts, and its picture settles from a slight zoom.
-      const archP = clamp((storyP - 0.16) / 0.6);
-      if (storyArchRef.current) {
-        storyArchRef.current.style.opacity = String(archP);
-        storyArchRef.current.style.transform = `translateY(${(1 - archP) * 56}px)`;
-      }
-      if (storyArchImgRef.current) {
-        storyArchImgRef.current.style.transform = `scale(${1 + (1 - archP) * 0.2})`;
-      }
 
       if (storyKickerRef.current) {
         storyKickerRef.current.style.transform = `translateY(${(1 - sKickerP) * 18}px)`;
@@ -141,7 +129,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
         // Each word reveals slightly after the last: a real cascade, not a
         // single block moving together.
         const wp = clamp((sHeadingBaseP - (i / wordCount) * 0.5) / 0.5);
-        el.style.transform = `translateY(${(1 - wp) * 100}%)`;
+        el.style.transform = `translateY(${(1 - wp) * 130}%)`;
       });
       if (storyRuleRef.current) {
         storyRuleRef.current.style.transform = `scaleX(${sRuleP})`;
@@ -272,7 +260,25 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
           }}
         >
           <div className="absolute inset-0 bg-caffeine-dark/55 lg:hidden" />
-          <div className="absolute inset-0 hidden bg-caffeine-dark/30 xl:block" />
+          {/* Steam: slow looping wisps rising on the open side of the panel. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-[6%] hidden w-[34%] lg:block">
+            {[0, 1, 2, 3].map((n) => (
+              <svg
+                key={n}
+                viewBox="0 0 60 220"
+                className="story-wisp absolute bottom-[8%]"
+                style={{ left: `${8 + n * 22}%`, width: `${9 + (n % 2) * 4}%`, animationDelay: `${-n * 3.1}s`, animationDuration: `${11 + n * 1.7}s` }}
+              >
+                <path
+                  d="M30 220 C8 185 52 165 30 130 C8 95 52 75 30 40 C20 20 34 8 30 0"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ))}
+          </div>
         </div>
 
         {/* Diagonal image halves. The scroll loop moves/fades these two
@@ -383,32 +389,31 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
           ref={storyBlockRef}
           className="absolute inset-0 flex items-center px-5 sm:px-10 lg:px-20 xl:px-32 pt-16 sm:pt-20 lg:pt-24 pb-24 sm:pb-28 lg:pb-32"
         >
-          <div className="relative z-20 w-full max-w-2xl xl:max-w-[38rem] 2xl:max-w-3xl">
+          <div className="relative z-20 w-full max-w-2xl xl:max-w-[42rem]">
             <div
               ref={storyKickerRef}
-              className="mb-3 sm:mb-4 flex items-center gap-2.5 will-change-transform"
+              className="mb-4 sm:mb-5 flex items-center gap-3 will-change-transform"
               style={{ opacity: 0 }}
             >
-              <span aria-hidden="true" className="story-kicker-dot h-1.5 w-1.5 rounded-full bg-caffeine-gold" />
-              <span className="text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-caffeine-gold">
-                Our Story
-              </span>
+              <span aria-hidden="true" className="story-kicker-dot h-2 w-2 rounded-full bg-caffeine-gold" />
+              <span className="text-xs sm:text-sm font-bold uppercase tracking-[0.32em] text-caffeine-gold">Our Story</span>
+              <span aria-hidden="true" className="h-px w-10 sm:w-16 bg-gradient-to-r from-caffeine-gold/70 to-transparent" />
             </div>
 
             <h2
-              className="font-cozy font-bold tracking-tight leading-[1.04] text-white text-balance"
-              style={{ fontSize: "clamp(1.9rem, min(6.6vh, 8.4vw), 4.9rem)" }}
+              className="font-cozy font-bold tracking-tight leading-[1.02] text-white text-balance"
+              style={{ fontSize: "clamp(2.1rem, min(7.4vh, 9vw), 5.6rem)" }}
             >
               {storyHeadlineWords.map((word, i) => (
-                <span key={i} className="inline-block overflow-hidden align-bottom pb-[0.1em] -mb-[0.1em]">
+                <span key={i} className="inline-block overflow-hidden align-bottom pb-[0.12em] -mb-[0.12em]">
                   <span
                     ref={(el) => {
                       storyWordRefs.current[i] = el;
                     }}
                     className={`inline-block will-change-transform ${
-                      i === storyHeadlineWords.length - 1 ? "text-caffeine-gold" : ""
+                      i === storyHeadlineWords.length - 1 ? "story-shine" : ""
                     }`}
-                    style={{ transform: "translateY(100%)" }}
+                    style={{ transform: "translateY(130%)" }}
                   >
                     {word}
                     {i < storyHeadlineWords.length - 1 ? "\u00A0" : ""}
@@ -420,64 +425,45 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
             <span
               ref={storyRuleRef}
               aria-hidden="true"
-              className="mt-4 sm:mt-6 block h-1 w-20 origin-left rounded-full bg-caffeine-gold will-change-transform"
+              className="mt-5 sm:mt-7 block h-[3px] w-28 origin-left rounded-full bg-gradient-to-r from-caffeine-gold to-caffeine-gold/0 will-change-transform"
               style={{ transform: "scaleX(0)" }}
             />
 
-            <div ref={storyBodyRef} className="mt-4 sm:mt-6 space-y-3 sm:space-y-4 will-change-transform">
-              <p
-                className="font-cozy font-bold leading-snug text-caffeine-drip text-pretty"
-                style={{ fontSize: "clamp(1.05rem, min(3vh, 4.7vw), 1.9rem)" }}
-              >
-                {storyLead}
-              </p>
-              {storyRest && (
+            <div ref={storyBodyRef} className="mt-5 sm:mt-7 will-change-transform">
+              {/* The lead sentence hangs off a gold rail with a light that
+                  keeps travelling down it. */}
+              <div className="relative pl-5 sm:pl-7">
+                <span aria-hidden="true" className="absolute left-0 top-1 bottom-1 w-[2px] overflow-hidden rounded-full bg-caffeine-gold/25">
+                  <span className="story-trace absolute left-0 top-0 block h-10 w-full rounded-full bg-gradient-to-b from-transparent via-caffeine-gold to-transparent" />
+                </span>
                 <p
-                  className="max-w-xl leading-relaxed text-stone-200"
-                  style={{ fontSize: "clamp(0.85rem, 1.95vh, 1.1rem)" }}
+                  className="font-cozy font-bold leading-snug text-caffeine-drip text-pretty"
+                  style={{ fontSize: "clamp(1.1rem, min(3.1vh, 4.8vw), 2rem)" }}
                 >
-                  {storyRest}
+                  {storyLead}
                 </p>
-              )}
+                {storyRest && (
+                  <p
+                    className="mt-3 sm:mt-4 max-w-xl leading-relaxed text-stone-200"
+                    style={{ fontSize: "clamp(0.86rem, 1.95vh, 1.1rem)" }}
+                  >
+                    {storyRest}
+                  </p>
+                )}
+              </div>
               <a
                 ref={storyLinkRef}
                 href="#location"
-                className="group inline-flex items-center gap-2 pt-1 text-sm sm:text-base font-bold text-caffeine-gold hover:text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold will-change-transform"
+                className="story-link group mt-5 sm:mt-6 ml-5 sm:ml-7 inline-flex items-center gap-3 rounded-full border border-caffeine-gold/60 py-2 pl-5 pr-2 text-sm sm:text-base font-bold text-caffeine-gold transition-colors duration-300 hover:bg-caffeine-gold hover:text-caffeine-dark focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold will-change-transform"
                 style={{ opacity: 0 }}
               >
                 Come find us
-                <svg
-                  className="h-4 w-4 transition-transform duration-300 ease-out group-hover:translate-x-1"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 12h14m0 0l-6-6m6 6l-6 6" />
-                </svg>
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-caffeine-gold text-caffeine-dark transition-transform duration-300 ease-out group-hover:translate-x-1">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M5 12h14m0 0l-6-6m6 6l-6 6" />
+                  </svg>
+                </span>
               </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Arched photo: the same story picture, framed and in focus, so the
-            right half of the panel has a subject instead of a dim backdrop. */}
-        <div
-          ref={storyArchRef}
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 right-0 hidden items-center pr-24 pt-24 pb-32 will-change-transform xl:flex 2xl:pr-40"
-          style={{ opacity: 0 }}
-        >
-          <div className="relative">
-            <span className="absolute inset-0 translate-x-4 translate-y-4 rounded-t-[999px] rounded-b-[2rem] border-2 border-caffeine-gold/50" />
-            <div
-              className="relative overflow-hidden rounded-t-[999px] rounded-b-[2rem] shadow-2xl shadow-black/50 ring-1 ring-white/20"
-              style={{ height: "min(56vh, 30rem)", aspectRatio: "4 / 5" }}
-            >
-              <div ref={storyArchImgRef} className="absolute inset-0 will-change-transform">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={storyImg} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
-              </div>
             </div>
           </div>
         </div>

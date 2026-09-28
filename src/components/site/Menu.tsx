@@ -123,6 +123,10 @@ export default function Menu({ items }: { items: MenuItem[] }) {
   // if anything nudges the page while the panel swaps.
   const scrollYRef = useRef<number | null>(null);
   const didMountRef = useRef(false);
+  // The tab panel itself (remounts on every switch) — its height is the
+  // "real" height of the list, independent of the holder's min-height.
+  const panelRef = useRef<HTMLDivElement>(null);
+  const releaseHoldRef = useRef<(() => void) | null>(null);
   // "See more / Show less" wrapper, and where it sat before Show less.
   const moreRef = useRef<HTMLDivElement>(null);
   const moreTopRef = useRef<number | null>(null);
@@ -137,21 +141,14 @@ export default function Menu({ items }: { items: MenuItem[] }) {
   function pick(key: CategoryKey) {
     if (key === active) return;
     scrollYRef.current = window.scrollY;
-    // A shorter category (fewer pastries than drinks, say) makes the page
-    // shorter the instant the new panel swaps in. If the visitor had
-    // scrolled past where the new, shorter page ends, the browser clamps
-    // scrollY to the new max the moment the DOM changes — which reads as
-    // "clicking Pastries throws you to the bottom of the page". Locking
-    // this wrapper at its current height before switching means the page
-    // doesn't get shorter yet; the effect below eases it down afterwards,
-    // so any scroll adjustment happens gradually instead of snapping.
+    // Freeze the page height as it is right now. The new tab is usually
+    // shorter (fewer pastries than drinks); without this the document
+    // shrinks the instant the panel swaps, the browser clamps scrollY to the
+    // new bottom, and the visitor is thrown down to the next section.
     const el = panelHolderRef.current;
     if (el) {
-      el.style.transition = "none";
+      releaseHoldRef.current?.();
       el.style.minHeight = `${el.getBoundingClientRect().height}px`;
-      // Force the browser to register that value as its own frame, so the
-      // later transition has a real "from" state to animate out of.
-      void el.offsetHeight;
     }
     setActive(key);
     setShown(PREVIEW_COUNT);
@@ -182,18 +179,42 @@ export default function Menu({ items }: { items: MenuItem[] }) {
       window.scrollTo({ top: y, left: 0, behavior: "instant" });
     }
 
-    const raf = requestAnimationFrame(() => {
-      el.style.transition = "min-height 420ms cubic-bezier(0.65,0,0.35,1)";
-      el.style.minHeight = "0px";
-    });
-    const release = window.setTimeout(() => {
-      el.style.transition = "";
-      el.style.minHeight = "";
-    }, 460);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.clearTimeout(release);
-    };
+    /* Hold the old height, but let go of exactly as much as the page can
+       spare without moving what's on screen. If the visitor is parked at the
+       very bottom, nothing can be released yet, so the list simply keeps a
+       little empty room under it. Every scroll up frees more, and the panel
+       tightens up silently below the viewport — never under their eyes. */
+    let minH = parseFloat(el.style.minHeight) || 0;
+    let raf = 0;
+    function tighten() {
+      raf = 0;
+      const natural = panelRef.current?.offsetHeight ?? 0;
+      const root = document.documentElement;
+      const maxScroll = root.scrollHeight - window.innerHeight;
+      const slack = Math.max(0, maxScroll - window.scrollY - 2);
+      minH = Math.max(natural, minH - slack);
+      if (minH <= natural + 0.5) {
+        release();
+        return;
+      }
+      el!.style.minHeight = `${minH}px`;
+    }
+    function onScroll() {
+      if (!raf) raf = requestAnimationFrame(tighten);
+    }
+    function release() {
+      if (raf) cancelAnimationFrame(raf);
+      raf = 0;
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      el!.style.minHeight = "";
+      releaseHoldRef.current = null;
+    }
+    releaseHoldRef.current = release;
+    tighten();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return release;
   }, [active]);
 
   /* "Show less" removes rows above its own button, which would slide the
@@ -280,7 +301,7 @@ export default function Menu({ items }: { items: MenuItem[] }) {
         {/* Stable wrapper (see panelHolderRef above); key remounts only the
             div inside it, so the rows can rise in again on every switch. */}
         <div ref={panelHolderRef} className="lg:col-span-8">
-        <div key={active} role="tabpanel">
+        <div key={active} ref={panelRef} role="tabpanel">
           {lead && <FeatureItem item={lead} fallbackImg={category.fallbackImg} />}
 
           {rows.length === 0 && !lead ? (
