@@ -190,7 +190,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
   const storyFull =
     settings?.about_body ||
     "We started with a simple idea: create a room where locals could slow down, put their phones away for a minute, and actually taste their coffee. What began as a handful of tables and a secondhand espresso machine has grown into a daily stop for the neighborhood — but the idea hasn't changed. We source beans in small batches, roast them ourselves, and pull every shot the same careful way whether it's your first visit or your five-hundredth. Come for the coffee, stay for the people who've made this place feel like home.";
-  const leadMatch = storyFull.match(/^(.+?[.!?])(\s+|$)/s);
+  const leadMatch = storyFull.match(/^([\s\S]+?[.!?])(\s+|$)/);
   const storyLead = leadMatch ? leadMatch[1] : storyFull;
   const storyRest = leadMatch ? storyFull.slice(leadMatch[0].length).trim() : "";
 
