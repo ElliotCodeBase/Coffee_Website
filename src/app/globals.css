@@ -208,6 +208,17 @@ body {
     to { opacity: 0.5; }
   }
 
+  /* Menu rows rise in when a category is opened. */
+  .menu-rise {
+    animation: hero-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .story-float {
+    animation: story-float 9s ease-in-out infinite alternate;
+  }
+  @keyframes story-float {
+    from { transform: translateY(0) rotate(-1.2deg); }
+    to { transform: translateY(-10px) rotate(0.4deg); }
+  }
   /* Milk drip edge (see DripEdge.tsx). Stem lengthens past the resting
      tip, a droplet pinches off and falls, the stem eases back. */
   .drip-stem {
@@ -267,6 +278,8 @@ body {
     .hero-fade,
     .hero-drift,
     .hero-glow,
+    .menu-rise,
+    .story-float,
     .drip-stem,
     .drip-drop {
       animation: none;

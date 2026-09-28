@@ -186,6 +186,14 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
     };
   }, []);
 
+  /* First sentence of the story is set large as a lead; the rest follows in body type. */
+  const storyFull =
+    settings?.about_body ||
+    "We started with a simple idea: create a room where locals could slow down, put their phones away for a minute, and actually taste their coffee. What began as a handful of tables and a secondhand espresso machine has grown into a daily stop for the neighborhood — but the idea hasn't changed. We source beans in small batches, roast them ourselves, and pull every shot the same careful way whether it's your first visit or your five-hundredth. Come for the coffee, stay for the people who've made this place feel like home.";
+  const leadMatch = storyFull.match(/^(.+?[.!?])(\s+|$)/s);
+  const storyLead = leadMatch ? leadMatch[1] : storyFull;
+  const storyRest = leadMatch ? storyFull.slice(leadMatch[0].length).trim() : "";
+
   const headlineWords = (settings?.hero_headline || "Good coffee, good people.").split(" ");
 
   return (
@@ -321,39 +329,48 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
         {/* Story text */}
         <div
           ref={storyBlockRef}
-          className="absolute inset-0 flex items-center px-5 sm:px-10 lg:px-20 xl:px-32 pb-16 sm:pb-20"
+          className="absolute inset-0 flex items-center px-5 sm:px-10 lg:px-20 xl:px-32 pb-24 sm:pb-28 lg:pb-32"
         >
-          <div className="relative z-20 w-full max-w-screen-2xl mx-auto grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
-            <div className="max-w-xl sm:max-w-2xl lg:max-w-none space-y-4 sm:space-y-6 order-2 lg:order-1">
+          <div className="relative z-20 w-full max-w-screen-2xl mx-auto grid lg:grid-cols-12 gap-8 lg:gap-16 items-center">
+            <div className="lg:col-span-7 max-w-2xl lg:max-w-none space-y-4 sm:space-y-6">
               <h2
                 ref={storyHeadingRef}
-                className="font-cozy text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-white text-balance will-change-transform"
+                className="font-cozy text-3xl xs:text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight leading-[1.05] text-white text-balance will-change-transform"
               >
                 {settings?.about_headline || "Built around the neighborhood."}
               </h2>
-              <p
-                ref={storyBodyRef}
-                className="text-stone-200 text-sm sm:text-base lg:text-lg xl:text-xl leading-relaxed font-normal will-change-transform"
-              >
-                {settings?.about_body ||
-                  "We started with a simple idea: create a room where locals could slow down, put their phones away for a minute, and actually taste their coffee. What began as a handful of tables and a secondhand espresso machine has grown into a daily stop for the neighborhood — but the idea hasn't changed. We source beans in small batches, roast them ourselves, and pull every shot the same careful way whether it's your first visit or your five-hundredth. Come for the coffee, stay for the people who've made this place feel like home."}
-              </p>
+              <div ref={storyBodyRef} className="space-y-3 sm:space-y-4 will-change-transform">
+                <p className="font-cozy text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold leading-snug text-caffeine-drip text-pretty">
+                  {storyLead}
+                </p>
+                {storyRest && (
+                  <p className="max-w-2xl text-[clamp(0.85rem,1.9vh,1.15rem)] leading-relaxed text-stone-200 border-t border-white/15 pt-3 sm:pt-4">
+                    {storyRest}
+                  </p>
+                )}
+              </div>
             </div>
 
-            <div className="relative order-1 lg:order-2 hidden sm:block will-change-transform" ref={storyCardRef}>
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute -inset-6 lg:-inset-10 rounded-full bg-caffeine-accent/20 blur-3xl"
-              />
-              <div className="relative aspect-[4/3] w-full max-w-md mx-auto rounded-2xl overflow-hidden border-4 border-caffeine-cream/10 shadow-2xl">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={storyImg}
-                  alt=""
+            {/* Arched window onto the shop: the photo sits in a tall arch with a
+                second outline arch offset behind it, and floats gently. The
+                scroll loop transforms the wrapper; the float is on the inner
+                element so the two never share a transform. */}
+            <div className="relative lg:col-span-5 hidden sm:block will-change-transform" ref={storyCardRef}>
+              <div className="story-float relative mx-auto w-full max-w-[17rem] lg:max-w-sm">
+                <div
                   aria-hidden="true"
-                  loading="lazy"
-                  className="absolute inset-0 w-full h-full object-cover"
+                  className="absolute inset-0 translate-x-4 translate-y-4 lg:translate-x-6 lg:translate-y-6 rounded-t-full rounded-b-3xl border-2 border-caffeine-gold/60"
                 />
+                <div className="relative aspect-[3/4] overflow-hidden rounded-t-full rounded-b-3xl shadow-2xl shadow-black/40">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={storyImg}
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                </div>
               </div>
             </div>
           </div>
