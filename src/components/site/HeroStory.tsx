@@ -39,6 +39,8 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
   const storyBlockRef = useRef<HTMLDivElement>(null);
   const storyRuleRef = useRef<HTMLSpanElement>(null);
   const storyImgParallaxRef = useRef<HTMLDivElement>(null);
+  const storyArchRef = useRef<HTMLDivElement>(null);
+  const storyArchImgRef = useRef<HTMLDivElement>(null);
 
   function handleHeroCtaClick(e: React.MouseEvent<HTMLAnchorElement>) {
     const target = document.querySelector("#menu");
@@ -117,6 +119,16 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
       }
       if (storyOverlayRef.current) {
         storyOverlayRef.current.style.opacity = String(storyP);
+      }
+      // Arched photo (wide screens): rises and fades in a beat after the
+      // text starts, and its picture settles from a slight zoom.
+      const archP = clamp((storyP - 0.16) / 0.6);
+      if (storyArchRef.current) {
+        storyArchRef.current.style.opacity = String(archP);
+        storyArchRef.current.style.transform = `translateY(${(1 - archP) * 56}px)`;
+      }
+      if (storyArchImgRef.current) {
+        storyArchImgRef.current.style.transform = `scale(${1 + (1 - archP) * 0.2})`;
       }
 
       if (storyKickerRef.current) {
@@ -260,6 +272,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
           }}
         >
           <div className="absolute inset-0 bg-caffeine-dark/55 lg:hidden" />
+          <div className="absolute inset-0 hidden bg-caffeine-dark/30 xl:block" />
         </div>
 
         {/* Diagonal image halves. The scroll loop moves/fades these two
@@ -370,7 +383,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
           ref={storyBlockRef}
           className="absolute inset-0 flex items-center px-5 sm:px-10 lg:px-20 xl:px-32 pt-16 sm:pt-20 lg:pt-24 pb-24 sm:pb-28 lg:pb-32"
         >
-          <div className="relative z-20 w-full max-w-2xl xl:max-w-3xl">
+          <div className="relative z-20 w-full max-w-2xl xl:max-w-[38rem] 2xl:max-w-3xl">
             <div
               ref={storyKickerRef}
               className="mb-3 sm:mb-4 flex items-center gap-2.5 will-change-transform"
@@ -392,7 +405,9 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
                     ref={(el) => {
                       storyWordRefs.current[i] = el;
                     }}
-                    className="inline-block will-change-transform"
+                    className={`inline-block will-change-transform ${
+                      i === storyHeadlineWords.length - 1 ? "text-caffeine-gold" : ""
+                    }`}
                     style={{ transform: "translateY(100%)" }}
                   >
                     {word}
@@ -441,6 +456,28 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 12h14m0 0l-6-6m6 6l-6 6" />
                 </svg>
               </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Arched photo: the same story picture, framed and in focus, so the
+            right half of the panel has a subject instead of a dim backdrop. */}
+        <div
+          ref={storyArchRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 hidden items-center pr-24 pt-24 pb-32 will-change-transform xl:flex 2xl:pr-40"
+          style={{ opacity: 0 }}
+        >
+          <div className="relative">
+            <span className="absolute inset-0 translate-x-4 translate-y-4 rounded-t-[999px] rounded-b-[2rem] border-2 border-caffeine-gold/50" />
+            <div
+              className="relative overflow-hidden rounded-t-[999px] rounded-b-[2rem] shadow-2xl shadow-black/50 ring-1 ring-white/20"
+              style={{ height: "min(56vh, 30rem)", aspectRatio: "4 / 5" }}
+            >
+              <div ref={storyArchImgRef} className="absolute inset-0 will-change-transform">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={storyImg} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" />
+              </div>
             </div>
           </div>
         </div>

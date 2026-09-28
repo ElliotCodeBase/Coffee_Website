@@ -115,11 +115,17 @@ function sortForDisplay(list: MenuItem[]): MenuItem[] {
 export default function Menu({ items }: { items: MenuItem[] }) {
   const [active, setActive] = useState<CategoryKey>("drinks");
   const [shown, setShown] = useState(PREVIEW_COUNT);
-  const sectionRef = useRef<HTMLElement>(null);
   // Stable across the tab switch (unlike the panel below it, which remounts
   // via `key={active}` so its rows can rise in again) — this is what makes
   // the height-hold trick in useLayoutEffect below possible.
   const panelHolderRef = useRef<HTMLDivElement>(null);
+  // Scroll position at the moment a tab is pressed, so it can be restored
+  // if anything nudges the page while the panel swaps.
+  const scrollYRef = useRef<number | null>(null);
+  const didMountRef = useRef(false);
+  // "See more / Show less" wrapper, and where it sat before Show less.
+  const moreRef = useRef<HTMLDivElement>(null);
+  const moreTopRef = useRef<number | null>(null);
 
   const category = CATEGORIES.find((c) => c.key === active)!;
   const list = sortForDisplay(items.filter((i) => i.category === active));
@@ -130,6 +136,7 @@ export default function Menu({ items }: { items: MenuItem[] }) {
 
   function pick(key: CategoryKey) {
     if (key === active) return;
+    scrollYRef.current = window.scrollY;
     // A shorter category (fewer pastries than drinks, say) makes the page
     // shorter the instant the new panel swaps in. If the visitor had
     // scrolled past where the new, shorter page ends, the browser clamps
@@ -151,8 +158,30 @@ export default function Menu({ items }: { items: MenuItem[] }) {
   }
 
   useLayoutEffect(() => {
+    // Nothing to do on the very first render — only on a real tab switch.
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
     const el = panelHolderRef.current;
     if (!el) return;
+
+    /* Why the page used to jump down when a tab was pressed: this effect
+       ended with sectionRef.scrollIntoView({ block: "nearest" }). The menu
+       section is taller than the screen, and for an element taller than the
+       screen "nearest" means "line its top edge up with the top of the
+       window" — so whenever the section's top was still visible (e.g. right
+       after "See the menu", which parks it just under the header) the press
+       scrolled the whole page down to that edge, smoothly, because <html>
+       has scroll-behavior: smooth. It also fired once on page load. The
+       call is gone; instead, if anything at all has moved the page since
+       the press, put it back instantly. */
+    const y = scrollYRef.current;
+    scrollYRef.current = null;
+    if (y !== null && Math.abs(window.scrollY - y) > 1) {
+      window.scrollTo({ top: y, left: 0, behavior: "instant" });
+    }
+
     const raf = requestAnimationFrame(() => {
       el.style.transition = "min-height 420ms cubic-bezier(0.65,0,0.35,1)";
       el.style.minHeight = "0px";
@@ -161,19 +190,30 @@ export default function Menu({ items }: { items: MenuItem[] }) {
       el.style.transition = "";
       el.style.minHeight = "";
     }, 460);
-    // Last line of defense: if anything still leaves the section out of
-    // view once settled, bring it back. Runs before paint, so it's never
-    // actually seen as a jump.
-    sectionRef.current?.scrollIntoView({ block: "nearest" });
     return () => {
       cancelAnimationFrame(raf);
       window.clearTimeout(release);
     };
   }, [active]);
 
+  /* "Show less" removes rows above its own button, which would slide the
+     button up and out from under the pointer. Keep it where it was. */
+  useLayoutEffect(() => {
+    const before = moreTopRef.current;
+    moreTopRef.current = null;
+    const box = moreRef.current;
+    if (before === null || !box) return;
+    const delta = box.getBoundingClientRect().top - before;
+    if (Math.abs(delta) > 1) window.scrollBy({ top: delta, left: 0, behavior: "instant" });
+  }, [shown]);
+
+  function showLess() {
+    moreTopRef.current = moreRef.current ? moreRef.current.getBoundingClientRect().top : null;
+    setShown(PREVIEW_COUNT);
+  }
+
   return (
     <section
-      ref={sectionRef}
       id="menu"
       className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 pt-40 sm:pt-52 lg:pt-64 xl:pt-72 pb-20 sm:pb-28 lg:pb-36 bg-caffeine-dark text-white px-5 sm:px-12 lg:px-20 [overflow-anchor:none]"
     >
@@ -254,7 +294,7 @@ export default function Menu({ items }: { items: MenuItem[] }) {
           )}
 
           {(canShowMore || shown > PREVIEW_COUNT) && rows.length > PREVIEW_COUNT && (
-            <div className="flex justify-center mt-10 sm:mt-12">
+            <div ref={moreRef} className="flex justify-center mt-10 sm:mt-12">
               {canShowMore ? (
                 <button
                   type="button"
@@ -269,7 +309,7 @@ export default function Menu({ items }: { items: MenuItem[] }) {
               ) : (
                 <button
                   type="button"
-                  onClick={() => setShown(PREVIEW_COUNT)}
+                  onClick={showLess}
                   className="inline-flex items-center gap-2 text-sm font-bold text-caffeine-gold hover:text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold"
                 >
                   Show less
