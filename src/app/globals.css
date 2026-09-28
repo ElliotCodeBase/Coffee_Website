@@ -151,12 +151,6 @@ body {
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .hscroll__track {
-      scroll-behavior: auto;
-    }
-  }
-
   /* ---------- Front-page motion ---------- */
 
   /* Hero entrance: headline words rise out of a clip, body + CTA fade up.
@@ -180,8 +174,8 @@ body {
 
   /* Cozy loop on the hero photo: slow push-in and drift on the <img> inside
      each diagonal half (the halves themselves are moved by the scroll loop).
-     Both images run the same animation so the seam never shows. Bigger
-     range + a slower, more organic easing than a plain ease-in-out. */
+     Both images run the same animation so the seam never shows. The story
+     panel's full-bleed background image reuses this same class. */
   .hero-drift {
     transform-origin: 62% 42%;
     animation: hero-drift 26s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
@@ -219,13 +213,15 @@ body {
     to { opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  /* Our Story photo drifts gently (wrapper is moved by the scroll loop). */
-  .story-float {
-    animation: story-float 8s ease-in-out infinite alternate;
+  /* Our Story kicker ("OUR STORY") — a small glowing pulse once it's in,
+     scroll-driven opacity/position are set inline in HeroStory.tsx, this
+     just adds a soft breathing glow to the dot beside it. */
+  .story-kicker-dot {
+    animation: story-kicker-pulse 2.2s ease-in-out infinite;
   }
-  @keyframes story-float {
-    from { transform: translateY(0) rotate(-2.4deg) scale(1); }
-    to { transform: translateY(-14px) rotate(-0.4deg) scale(1.03); }
+  @keyframes story-kicker-pulse {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.35); }
   }
 
   /* ---- Milk drip edge (see DripEdge.tsx) ----
@@ -258,83 +254,19 @@ body {
     100% { opacity: 0; transform: translateY(60px) scale(0.85); }
   }
 
-  /* ---- Ambient particles (see AmbientParticles.tsx) ----
-     Outer .ap travels the screen on a gentle S-curve; .ap-sway sways side
-     to side independently; .ap-spin turns slowly. transform + opacity only. */
-  .ap {
-    position: absolute;
-    top: 0;
-    opacity: 0;
-    will-change: transform, opacity;
-    animation-timing-function: ease-in-out;
-    animation-iteration-count: infinite;
-  }
-  .ap-fall { animation-name: ap-fall; }
-  .ap-rise { animation-name: ap-rise; }
-  .ap-steam { animation-name: ap-steam; animation-timing-function: ease-out; }
-  .ap-sway {
-    display: block;
-    animation: ap-sway 6s ease-in-out infinite alternate;
-    will-change: transform;
-  }
-  .ap-spin {
-    animation-name: ap-spin;
-    animation-timing-function: linear;
-    animation-iteration-count: infinite;
-  }
-  .ap-ember {
-    background: radial-gradient(circle, var(--caffeine-gold) 0%, transparent 72%);
-  }
-  .ap-steam-shape {
-    background: radial-gradient(circle, color-mix(in srgb, var(--caffeine-cream) 85%, white) 0%, transparent 75%);
-    filter: blur(2px);
-  }
-  @keyframes ap-fall {
-    0% { transform: translate3d(0, -10vh, 0); opacity: 0; }
-    8% { opacity: 0.85; }
-    50% { transform: translate3d(var(--curve), 50vh, 0); }
-    92% { opacity: 0.85; }
-    100% { transform: translate3d(0, 110vh, 0); opacity: 0; }
-  }
-  @keyframes ap-rise {
-    0% { transform: translate3d(0, 110vh, 0); opacity: 0; }
-    15% { opacity: 0.9; }
-    50% { transform: translate3d(calc(var(--curve) * -1), 50vh, 0); }
-    85% { opacity: 0.6; }
-    100% { transform: translate3d(0, -10vh, 0); opacity: 0; }
-  }
-  @keyframes ap-steam {
-    0% { transform: translate3d(0, 20vh, 0) scale(0.7); opacity: 0; }
-    20% { opacity: 0.35; }
-    100% { transform: translate3d(var(--curve), -30vh, 0) scale(1.6); opacity: 0; }
-  }
-  @keyframes ap-sway {
-    from { transform: translateX(calc(var(--sway) * -1)); }
-    to { transform: translateX(var(--sway)); }
-  }
-  @keyframes ap-spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
   @media (prefers-reduced-motion: reduce) {
+    .hscroll__track {
+      scroll-behavior: auto;
+    }
     .hero-word,
     .hero-fade,
     .hero-drift,
     .hero-glow,
     .menu-rise,
-    .story-float,
+    .story-kicker-dot,
     .drip-stem,
-    .drip-drop,
-    .ap-sway,
-    .ap-spin {
+    .drip-drop {
       animation: none;
-    }
-    /* Particles: still, faint, scattered — no travel. */
-    .ap {
-      animation: none;
-      top: var(--y);
-      opacity: 0.22;
     }
   }
 }

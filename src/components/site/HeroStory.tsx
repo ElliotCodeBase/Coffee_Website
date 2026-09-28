@@ -32,10 +32,13 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
   const heroCueRef = useRef<HTMLDivElement>(null);
   const heroTextBlockRef = useRef<HTMLDivElement>(null);
 
-  const storyHeadingRef = useRef<HTMLHeadingElement>(null);
+  const storyKickerRef = useRef<HTMLDivElement>(null);
+  const storyWordRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const storyBodyRef = useRef<HTMLParagraphElement>(null);
+  const storyLinkRef = useRef<HTMLAnchorElement>(null);
   const storyBlockRef = useRef<HTMLDivElement>(null);
   const storyRuleRef = useRef<HTMLSpanElement>(null);
+  const storyImgParallaxRef = useRef<HTMLDivElement>(null);
 
   function handleHeroCtaClick(e: React.MouseEvent<HTMLAnchorElement>) {
     const target = document.querySelector("#menu");
@@ -94,26 +97,50 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
         heroTextBlockRef.current.style.pointerEvents = splitP > 0.5 ? "none" : "auto";
       }
 
-      const sHeadingP = clamp((storyP - 0.12) / 0.55);
-      const sBodyP = clamp((storyP - 0.24) / 0.55);
+      /* Kicker leads, then the headline words cascade in one after another
+         (same clip-and-rise idea as the hero, but scroll-driven so it can
+         run in reverse if the visitor scrolls back up), then the rule
+         draws, then body copy, then the link — five small beats instead
+         of two big blocks fading in together. */
+      const sKickerP = clamp((storyP - 0.04) / 0.4);
+      const sHeadingBaseP = clamp((storyP - 0.1) / 0.4);
+      const sRuleP = clamp((storyP - 0.24) / 0.4);
+      const sBodyP = clamp((storyP - 0.32) / 0.5);
+      const sLinkP = clamp((storyP - 0.46) / 0.5);
 
       if (storyImgRef.current) {
         storyImgRef.current.style.opacity = String(storyP);
+      }
+      if (storyImgParallaxRef.current) {
+        const settle = 1 - storyP;
+        storyImgParallaxRef.current.style.transform = `scale(${1 + settle * 0.16}) translateY(${settle * -3}%)`;
       }
       if (storyOverlayRef.current) {
         storyOverlayRef.current.style.opacity = String(storyP);
       }
 
-      if (storyHeadingRef.current) {
-        storyHeadingRef.current.style.transform = `translateY(${(1 - sHeadingP) * 56}px)`;
-        storyHeadingRef.current.style.opacity = String(sHeadingP);
+      if (storyKickerRef.current) {
+        storyKickerRef.current.style.transform = `translateY(${(1 - sKickerP) * 18}px)`;
+        storyKickerRef.current.style.opacity = String(sKickerP);
       }
+      const wordCount = storyWordRefs.current.length || 1;
+      storyWordRefs.current.forEach((el, i) => {
+        if (!el) return;
+        // Each word reveals slightly after the last: a real cascade, not a
+        // single block moving together.
+        const wp = clamp((sHeadingBaseP - (i / wordCount) * 0.5) / 0.5);
+        el.style.transform = `translateY(${(1 - wp) * 100}%)`;
+      });
       if (storyRuleRef.current) {
-        storyRuleRef.current.style.transform = `scaleX(${sHeadingP})`;
+        storyRuleRef.current.style.transform = `scaleX(${sRuleP})`;
       }
       if (storyBodyRef.current) {
-        storyBodyRef.current.style.transform = `translateY(${(1 - sBodyP) * 46}px)`;
+        storyBodyRef.current.style.transform = `translateY(${(1 - sBodyP) * 40}px)`;
         storyBodyRef.current.style.opacity = String(sBodyP);
+      }
+      if (storyLinkRef.current) {
+        storyLinkRef.current.style.transform = `translateY(${(1 - sLinkP) * 24}px)`;
+        storyLinkRef.current.style.opacity = String(sLinkP);
       }
       if (storyBlockRef.current) {
         storyBlockRef.current.style.pointerEvents = storyP > 0.4 ? "auto" : "none";
@@ -192,6 +219,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
   const storyRest = leadMatch ? storyFull.slice(leadMatch[0].length).trim() : "";
 
   const headlineWords = (settings?.hero_headline || "Good coffee, good people.").split(" ");
+  const storyHeadlineWords = (settings?.about_headline || "Built around the neighborhood.").split(" ");
 
   return (
     <div
@@ -204,15 +232,20 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
 
       <div className="sticky top-0 h-screen w-full overflow-hidden bg-caffeine-dark">
         {/* Story background image */}
-        <div ref={storyImgRef} className="absolute inset-0 will-change-[opacity]" style={{ opacity: 0 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={storyImg}
-            alt=""
-            aria-hidden="true"
-            className="hero-drift absolute inset-0 w-full h-full object-cover"
-            loading="lazy"
-          />
+        <div ref={storyImgRef} className="absolute inset-0 overflow-hidden will-change-[opacity]" style={{ opacity: 0 }}>
+          {/* Two independent transforms, two elements: this wrapper eases
+              from a slight zoom-out as the story reveals (scroll-driven),
+              while the <img> inside runs its own always-on cozy drift. */}
+          <div ref={storyImgParallaxRef} className="absolute inset-0 will-change-transform">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={storyImg}
+              alt=""
+              aria-hidden="true"
+              className="hero-drift absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+            />
+          </div>
         </div>
         {/* Dark on the text side, open on the photo side; a floor fade keeps the
             milk drip edge clean. On phones the text spans the width, so a flat
@@ -338,12 +371,35 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
           className="absolute inset-0 flex items-center px-5 sm:px-10 lg:px-20 xl:px-32 pt-16 sm:pt-20 lg:pt-24 pb-24 sm:pb-28 lg:pb-32"
         >
           <div className="relative z-20 w-full max-w-2xl xl:max-w-3xl">
+            <div
+              ref={storyKickerRef}
+              className="mb-3 sm:mb-4 flex items-center gap-2.5 will-change-transform"
+              style={{ opacity: 0 }}
+            >
+              <span aria-hidden="true" className="story-kicker-dot h-1.5 w-1.5 rounded-full bg-caffeine-gold" />
+              <span className="text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-caffeine-gold">
+                Our Story
+              </span>
+            </div>
+
             <h2
-              ref={storyHeadingRef}
-              className="font-cozy font-bold tracking-tight leading-[1.04] text-white text-balance will-change-transform"
+              className="font-cozy font-bold tracking-tight leading-[1.04] text-white text-balance"
               style={{ fontSize: "clamp(1.9rem, min(6.6vh, 8.4vw), 4.9rem)" }}
             >
-              {settings?.about_headline || "Built around the neighborhood."}
+              {storyHeadlineWords.map((word, i) => (
+                <span key={i} className="inline-block overflow-hidden align-bottom pb-[0.1em] -mb-[0.1em]">
+                  <span
+                    ref={(el) => {
+                      storyWordRefs.current[i] = el;
+                    }}
+                    className="inline-block will-change-transform"
+                    style={{ transform: "translateY(100%)" }}
+                  >
+                    {word}
+                    {i < storyHeadlineWords.length - 1 ? "\u00A0" : ""}
+                  </span>
+                </span>
+              ))}
             </h2>
 
             <span
@@ -369,8 +425,10 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
                 </p>
               )}
               <a
+                ref={storyLinkRef}
                 href="#location"
-                className="group inline-flex items-center gap-2 pt-1 text-sm sm:text-base font-bold text-caffeine-gold hover:text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold"
+                className="group inline-flex items-center gap-2 pt-1 text-sm sm:text-base font-bold text-caffeine-gold hover:text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold will-change-transform"
+                style={{ opacity: 0 }}
               >
                 Come find us
                 <svg

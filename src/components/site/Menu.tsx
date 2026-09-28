@@ -116,6 +116,10 @@ export default function Menu({ items }: { items: MenuItem[] }) {
   const [active, setActive] = useState<CategoryKey>("drinks");
   const [shown, setShown] = useState(PREVIEW_COUNT);
   const sectionRef = useRef<HTMLElement>(null);
+  // Stable across the tab switch (unlike the panel below it, which remounts
+  // via `key={active}` so its rows can rise in again) — this is what makes
+  // the height-hold trick in useLayoutEffect below possible.
+  const panelHolderRef = useRef<HTMLDivElement>(null);
 
   const category = CATEGORIES.find((c) => c.key === active)!;
   const list = sortForDisplay(items.filter((i) => i.category === active));
@@ -126,27 +130,52 @@ export default function Menu({ items }: { items: MenuItem[] }) {
 
   function pick(key: CategoryKey) {
     if (key === active) return;
+    // A shorter category (fewer pastries than drinks, say) makes the page
+    // shorter the instant the new panel swaps in. If the visitor had
+    // scrolled past where the new, shorter page ends, the browser clamps
+    // scrollY to the new max the moment the DOM changes — which reads as
+    // "clicking Pastries throws you to the bottom of the page". Locking
+    // this wrapper at its current height before switching means the page
+    // doesn't get shorter yet; the effect below eases it down afterwards,
+    // so any scroll adjustment happens gradually instead of snapping.
+    const el = panelHolderRef.current;
+    if (el) {
+      el.style.transition = "none";
+      el.style.minHeight = `${el.getBoundingClientRect().height}px`;
+      // Force the browser to register that value as its own frame, so the
+      // later transition has a real "from" state to animate out of.
+      void el.offsetHeight;
+    }
     setActive(key);
     setShown(PREVIEW_COUNT);
   }
 
-  /* A shorter category (e.g. fewer pastries than drinks) makes the page
-     shorter the instant this panel swaps in. If the visitor had scrolled
-     past where the new, shorter page ends, the browser silently clamps
-     scrollY to the new max — which reads as "clicking Pastries throws you
-     to the bottom of the page". scrollIntoView({block:"nearest"}) undoes
-     that clamp by bringing the section back into view when (and only
-     when) it's no longer visible. useLayoutEffect (not useEffect) runs
-     before the browser paints, so the clamp is never actually seen. */
   useLayoutEffect(() => {
+    const el = panelHolderRef.current;
+    if (!el) return;
+    const raf = requestAnimationFrame(() => {
+      el.style.transition = "min-height 420ms cubic-bezier(0.65,0,0.35,1)";
+      el.style.minHeight = "0px";
+    });
+    const release = window.setTimeout(() => {
+      el.style.transition = "";
+      el.style.minHeight = "";
+    }, 460);
+    // Last line of defense: if anything still leaves the section out of
+    // view once settled, bring it back. Runs before paint, so it's never
+    // actually seen as a jump.
     sectionRef.current?.scrollIntoView({ block: "nearest" });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(release);
+    };
   }, [active]);
 
   return (
     <section
       ref={sectionRef}
       id="menu"
-      className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 pt-40 sm:pt-52 lg:pt-64 xl:pt-72 pb-20 sm:pb-28 lg:pb-36 bg-caffeine-dark text-white px-5 sm:px-12 lg:px-20"
+      className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 pt-40 sm:pt-52 lg:pt-64 xl:pt-72 pb-20 sm:pb-28 lg:pb-36 bg-caffeine-dark text-white px-5 sm:px-12 lg:px-20 [overflow-anchor:none]"
     >
       <div className="max-w-screen-2xl mx-auto grid lg:grid-cols-12 gap-10 lg:gap-16">
         <div className="lg:col-span-4 lg:sticky lg:top-32 self-start">
@@ -208,8 +237,10 @@ export default function Menu({ items }: { items: MenuItem[] }) {
           </div>
         </div>
 
-        {/* key remounts the panel on tab change so the rows rise in again */}
-        <div key={active} role="tabpanel" className="lg:col-span-8">
+        {/* Stable wrapper (see panelHolderRef above); key remounts only the
+            div inside it, so the rows can rise in again on every switch. */}
+        <div ref={panelHolderRef} className="lg:col-span-8">
+        <div key={active} role="tabpanel">
           {lead && <FeatureItem item={lead} fallbackImg={category.fallbackImg} />}
 
           {rows.length === 0 && !lead ? (
@@ -249,6 +280,7 @@ export default function Menu({ items }: { items: MenuItem[] }) {
               )}
             </div>
           )}
+        </div>
         </div>
       </div>
     </section>

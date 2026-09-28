@@ -15,7 +15,6 @@ import Footer from "@/components/site/Footer";
 import ThemeVars from "@/components/site/ThemeVars";
 import CodeInjector from "@/components/site/CodeInjector";
 import VisitTracker from "@/components/site/VisitTracker";
-import AmbientParticles from "@/components/site/AmbientParticles";
 
 async function getActiveSnippets(location: "head" | "body_start" | "body_end") {
   try {
@@ -176,8 +175,6 @@ async function PageBody() {
         <ContactSection settings={settings} topics={contactTopics} />
         <Services items={serviceItems} />
       </main>
-      {/* One page-wide layer of drifting motes (fixed, pointer-events none). */}
-      <AmbientParticles />
       <Footer settings={settings} />
       <CodeInjector snippets={bodyEndSnippets} />
     </>
