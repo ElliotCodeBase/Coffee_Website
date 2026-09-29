@@ -127,6 +127,10 @@ export default function Menu({ items }: { items: MenuItem[] }) {
   // "real" height of the list, independent of the holder's min-height.
   const panelRef = useRef<HTMLDivElement>(null);
   const releaseHoldRef = useRef<(() => void) | null>(null);
+  // The grid row and the sticky left column (heading + tabs), so the hold
+  // can keep the tabs exactly where they are on screen.
+  const rowRef = useRef<HTMLDivElement>(null);
+  const leftColRef = useRef<HTMLDivElement>(null);
   // "See more / Show less" wrapper, and where it sat before Show less.
   const moreRef = useRef<HTMLDivElement>(null);
   const moreTopRef = useRef<number | null>(null);
@@ -179,11 +183,19 @@ export default function Menu({ items }: { items: MenuItem[] }) {
       window.scrollTo({ top: y, left: 0, behavior: "instant" });
     }
 
-    /* Hold the old height, but let go of exactly as much as the page can
-       spare without moving what's on screen. If the visitor is parked at the
-       very bottom, nothing can be released yet, so the list simply keeps a
-       little empty room under it. Every scroll up frees more, and the panel
-       tightens up silently below the viewport — never under their eyes. */
+    /* WHY THE TAB BUTTON JUMPED (reproduced in a browser, 1920x1080):
+       1. Pastries is a shorter list than Drinks, so the panel shrinks by
+          hundreds of px the moment it swaps.
+       2. Chrome's scroll anchoring then "helps": it keeps the section BELOW
+          the menu visually still by scrolling the page up by the same
+          amount — so everything above it, tabs included, jumps down.
+       3. The tab column is position: sticky inside that row. Once the row
+          gets shorter the column is squeezed against the row's bottom edge
+          and slides up even without (2).
+       So: scroll anchoring is off for the whole page (globals.css), and the
+       row keeps just enough height to leave the tab column exactly where it
+       is. Everything else is released at once; the remaining height is
+       released bit by bit as the visitor scrolls, never under their eyes. */
     let minH = parseFloat(el.style.minHeight) || 0;
     let raf = 0;
     function tighten() {
@@ -192,7 +204,17 @@ export default function Menu({ items }: { items: MenuItem[] }) {
       const root = document.documentElement;
       const maxScroll = root.scrollHeight - window.innerHeight;
       const slack = Math.max(0, maxScroll - window.scrollY - 2);
-      minH = Math.max(natural, minH - slack);
+      // 1) Never shrink the page more than it can spare without the browser
+      //    clamping the scroll position.
+      let need = Math.max(natural, minH - slack);
+      // 2) Sticky tab column: keep it where it is on screen.
+      const col = leftColRef.current;
+      const row = rowRef.current;
+      if (col && row && getComputedStyle(col).position === "sticky") {
+        const off = col.getBoundingClientRect().top - row.getBoundingClientRect().top;
+        need = Math.max(need, off + col.offsetHeight);
+      }
+      minH = Math.min(minH, need);
       if (minH <= natural + 0.5) {
         release();
         return;
@@ -238,8 +260,8 @@ export default function Menu({ items }: { items: MenuItem[] }) {
       id="menu"
       className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 pt-40 sm:pt-52 lg:pt-64 xl:pt-72 pb-20 sm:pb-28 lg:pb-36 bg-caffeine-dark text-white px-5 sm:px-12 lg:px-20 [overflow-anchor:none]"
     >
-      <div className="max-w-screen-2xl mx-auto grid lg:grid-cols-12 gap-10 lg:gap-16">
-        <div className="lg:col-span-4 lg:sticky lg:top-32 self-start">
+      <div ref={rowRef} className="max-w-screen-2xl mx-auto grid lg:grid-cols-12 gap-10 lg:gap-16">
+        <div ref={leftColRef} className="lg:col-span-4 lg:sticky lg:top-32 self-start">
           <h2 className="font-cozy text-4xl sm:text-6xl lg:text-7xl font-bold leading-[1.02] text-balance">
             What we&apos;re serving
           </h2>
@@ -262,10 +284,10 @@ export default function Menu({ items }: { items: MenuItem[] }) {
                   type="button"
                   aria-selected={isActive}
                   onClick={() => pick(c.key)}
-                  className={`group flex cursor-pointer flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 rounded-2xl border-2 px-4 py-3.5 lg:px-5 lg:py-4 text-left transition-[background-color,border-color,color,transform] duration-200 ease-out active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold ${
+                  className={`group flex cursor-pointer flex-col lg:flex-row lg:items-center gap-2 lg:gap-4 rounded-2xl border-2 px-4 py-3.5 lg:px-5 lg:py-4 text-left transition-[background-color,border-color,color] duration-200 ease-out focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold ${
                     isActive
                       ? "border-caffeine-drip bg-caffeine-drip text-caffeine-dark shadow-lg shadow-black/30"
-                      : "border-white/25 bg-white/[0.06] text-white hover:border-caffeine-gold hover:bg-white/[0.12] lg:hover:translate-x-1"
+                      : "border-white/25 bg-white/[0.06] text-white hover:border-caffeine-gold hover:bg-white/[0.12]"
                   }`}
                 >
                   <span

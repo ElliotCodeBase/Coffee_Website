@@ -97,6 +97,12 @@ export type ThemeSettings = {
   color_accent: string;
   color_gold: string;
   color_drip: string | null;
+  // Loading animation. Optional: absent until supabase/migration_theme_loader.sql has been run.
+  loader_enabled?: boolean | null;
+  loader_duration_ms?: number | null;
+  loader_frequency?: string | null;
+  loader_show_percent?: boolean | null;
+  loader_label?: string | null;
   font_pairing: string;
   updated_at: string;
 };

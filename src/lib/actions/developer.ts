@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { inviteTeamUser, normalizeEmail } from "@/lib/invite";
 import { isHexColor } from "@/lib/theme-sanitize";
 import { isFontPairingKey } from "@/lib/theme-presets";
+import { clampDuration, cleanLabel, isLoaderFrequency, LOADER_MAX_MS, LOADER_MIN_MS } from "@/lib/loader-config";
 import type { UserRole } from "@/types/database";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -68,10 +69,41 @@ export async function updateTheme(formData: FormData): Promise<ActionResult> {
   if (!isFontPairingKey(fontPairing)) return { error: "Choose one of the listed font pairings." };
   values.font_pairing = fontPairing;
 
-  const { error } = await check.supabase
+  // Loading animation options (see src/lib/loader-config.ts).
+  const rawDuration = Number(formData.get("loader_duration_ms"));
+  if (!Number.isFinite(rawDuration) || rawDuration < LOADER_MIN_MS || rawDuration > LOADER_MAX_MS) {
+    return { error: `Loading animation length must be between ${LOADER_MIN_MS / 1000} and ${LOADER_MAX_MS / 1000} seconds.` };
+  }
+  const frequency = String(formData.get("loader_frequency") ?? "every");
+  if (!isLoaderFrequency(frequency)) return { error: "Choose how often the loading animation shows." };
+  const loaderValues = {
+    loader_enabled: formData.get("loader_enabled") === "on",
+    loader_duration_ms: clampDuration(rawDuration),
+    loader_frequency: frequency,
+    loader_show_percent: formData.get("loader_show_percent") === "on",
+    loader_label: cleanLabel(formData.get("loader_label")) || null,
+  };
+
+  const now = new Date().toISOString();
+  let notice: string | undefined;
+  let { error } = await check.supabase
     .from("theme_settings")
-    .update({ ...values, updated_at: new Date().toISOString() })
+    .update({ ...values, ...loaderValues, updated_at: now })
     .eq("id", 1);
+
+  // The loader columns come from supabase/migration_theme_loader.sql. If it
+  // has not been run yet, still save the colors and fonts instead of
+  // failing the whole form, and say what is missing.
+  if (error && (error.code === "42703" || /loader_/.test(error.message))) {
+    ({ error } = await check.supabase
+      .from("theme_settings")
+      .update({ ...values, updated_at: now })
+      .eq("id", 1));
+    if (!error) {
+      notice =
+        "Colors and fonts saved, but the loading animation options were not: run supabase/migration_theme_loader.sql in the Supabase SQL Editor first.";
+    }
+  }
 
   if (error) {
     console.error("updateTheme error:", error.message);
@@ -80,7 +112,7 @@ export async function updateTheme(formData: FormData): Promise<ActionResult> {
 
   revalidatePath("/", "layout");
   revalidatePath("/admin/theme");
-  return { success: true };
+  return notice ? { success: true, notice } : { success: true };
 }
 
 export async function createCodeSnippet(formData: FormData): Promise<ActionResult> {

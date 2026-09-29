@@ -22,6 +22,14 @@
 
 html {
   scroll-behavior: smooth;
+  /* Chrome's scroll anchoring re-scrolls the page whenever content above the
+     viewport changes height (e.g. switching menu tabs), which shows up as the
+     page jumping. The site manages its own scroll positions. */
+  overflow-anchor: none;
+}
+
+body {
+  overflow-anchor: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -224,6 +232,103 @@ body {
     50% { opacity: 1; transform: scale(1.35); }
   }
 
+  /* ---- Opening loader (see LoaderClient.tsx) ---- */
+  html.sl-lock { overflow: hidden; }
+  html.sl-skip .site-loader { display: none; }
+
+  .site-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    overflow: hidden;
+    container-type: inline-size;
+    --sl-w: max(100cqw, 560px);
+    pointer-events: auto;
+  }
+  .site-loader--preview { position: absolute; z-index: 1; border-radius: inherit; }
+  .site-loader[data-phase="drain"] { pointer-events: none; }
+
+  .sl-mover { position: absolute; inset: 0; will-change: transform; }
+  .sl-dark { position: absolute; inset: 0; background: var(--caffeine-dark); }
+
+  .sl-milk {
+    position: absolute;
+    inset: 0;
+    --fh: calc(var(--sl-w) * 0.21);
+    transform: translateY(calc((1 - var(--p)) * -1 * (100% + var(--fh))));
+    will-change: transform;
+  }
+  .sl-milk-body { position: absolute; inset: 0; background: var(--caffeine-drip); overflow: hidden; }
+  .sl-milk-inner {
+    position: absolute;
+    inset: 0;
+    transform: translateY(calc((1 - var(--p)) * (100% + var(--fh))));
+    will-change: transform;
+  }
+
+  /* Drip fringe. --bottom hangs off the poured milk; --top is the same shape
+     flipped and hangs off the top of the sheet (trailing tails). */
+  .sl-fringe {
+    position: absolute;
+    left: 50%;
+    width: var(--sl-w);
+    height: auto;
+    overflow: visible;
+  }
+  .sl-fringe--bottom {
+    top: 100%;
+    margin-top: -2px;
+    transform: translateX(-50%);
+    filter: drop-shadow(0 10px 10px rgb(0 0 0 / 0.28));
+  }
+  .sl-fringe--top {
+    bottom: 100%;
+    margin-bottom: -2px;
+    transform: translateX(-50%) rotate(180deg);
+  }
+  .sl-drip { transform-box: fill-box; transform-origin: 50% 0; }
+  .sl-drip-in {
+    transform-box: fill-box;
+    transform-origin: 50% 0;
+    animation: sl-breathe var(--bd) ease-in-out infinite;
+    animation-delay: var(--bdel);
+  }
+  @keyframes sl-breathe {
+    0%, 100% { transform: scaleY(1); }
+    50% { transform: scaleY(var(--be)); }
+  }
+  /* Drops that let go of the longest drips and fall away. */
+  .sl-fall {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: sl-fall 3.8s cubic-bezier(0.5, 0, 0.9, 0.6) infinite;
+    animation-delay: var(--fdel);
+  }
+  @keyframes sl-fall {
+    0%, 55% { opacity: 0; transform: translateY(0) scale(0.5); }
+    62% { opacity: 1; transform: translateY(4px) scale(1); }
+    100% { opacity: 1; transform: translateY(300px) scale(0.85, 1.4); }
+  }
+
+  .site-loader[data-phase="drain"] .sl-mover {
+    animation: sl-drain 1.55s cubic-bezier(0.55, 0.02, 0.85, 0.5) forwards;
+  }
+  .site-loader[data-phase="drain"] .sl-drip { animation: sl-stretch 1.4s cubic-bezier(0.4, 0, 0.9, 0.6) both; animation-delay: var(--dd); }
+  .site-loader[data-phase="drain"] .sl-drip-in,
+  .site-loader[data-phase="drain"] .sl-fall { animation: none; }
+  .site-loader[data-phase="drain"] .sl-fall { opacity: 0; }
+  @keyframes sl-drain {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(calc(100% + var(--sl-w) * 0.24)); }
+  }
+  @keyframes sl-stretch {
+    from { transform: scale(1, 1); }
+    to { transform: scale(0.8, var(--sy)); }
+  }
+
+  @keyframes sl-fade { to { opacity: 0; } }
+
   /* ---- Our Story loops ---- */
   /* Gold sweep that keeps gliding across the headline's last word. */
   .story-shine {
@@ -246,23 +351,52 @@ body {
     0% { transform: translateY(-100%); }
     100% { transform: translateY(1400%); }
   }
-  /* Steam curling up and dissolving. */
-  .story-wisp {
-    color: rgb(255 243 227 / 0.28);
-    opacity: 0;
-    animation: story-wisp 12s ease-in-out infinite;
+  /* Giant outlined "Our Story" gliding behind the text. */
+  .story-marquee {
+    display: flex;
+    width: max-content;
+    animation: story-marquee 90s linear infinite;
   }
-  @keyframes story-wisp {
-    0% { opacity: 0; transform: translateY(40px) scaleX(0.9); }
-    20% { opacity: 1; }
-    60% { opacity: 0.6; transform: translateY(-140px) scaleX(1.15); }
-    100% { opacity: 0; transform: translateY(-300px) scaleX(0.85); }
+  .story-marquee__group {
+    display: flex;
+    flex-shrink: 0;
+    gap: 0.5em;
+    padding-right: 0.5em;
+    font-family: var(--font-cozy);
+    font-weight: 700;
+    font-size: clamp(6rem, 24vh, 15rem);
+    line-height: 0.9;
+    white-space: nowrap;
+    color: transparent;
+    -webkit-text-stroke: 1.5px rgb(255 243 227 / 0.1);
+  }
+  @keyframes story-marquee {
+    to { transform: translateX(-50%); }
+  }
+  /* Ring of text turning slowly on the story card's corner. */
+  .story-badge { animation: story-spin 26s linear infinite; }
+  @keyframes story-spin { to { transform: rotate(360deg); } }
+  /* The card and its opening quote mark float a few pixels, out of step. */
+  .story-card { animation: story-float 8s ease-in-out infinite; }
+  .story-quote { animation: story-quote 6s ease-in-out infinite; }
+  @keyframes story-float {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -7px; }
+  }
+  @keyframes story-quote {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-4px) rotate(-4deg); }
   }
 
   /* Milk drip edge motion lives in DripEdge.tsx (SVG SMIL), so it can keep
      the stem and the falling drop on one clock. */
 
   @media (prefers-reduced-motion: reduce) {
+    .site-loader[data-phase="drain"] .sl-mover {
+      animation: sl-fade 0.4s ease forwards;
+    }
+    .site-loader[data-phase="drain"] .sl-drip { animation: none; }
+    .sl-fringe--top { display: none; }
     .hscroll__track {
       scroll-behavior: auto;
     }
@@ -272,9 +406,14 @@ body {
     .hero-glow,
     .menu-rise,
     .story-kicker-dot,
+    .sl-drip-in,
+    .sl-fall,
+    .story-marquee,
+    .story-badge,
+    .story-card,
+    .story-quote,
     .story-shine,
-    .story-trace,
-    .story-wisp {
+    .story-trace {
       animation: none;
     }
   }

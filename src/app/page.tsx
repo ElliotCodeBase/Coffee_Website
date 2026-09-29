@@ -13,6 +13,7 @@ import LocationSection from "@/components/site/LocationSection";
 import ContactSection from "@/components/site/ContactSection";
 import Footer from "@/components/site/Footer";
 import ThemeVars from "@/components/site/ThemeVars";
+import SiteLoader from "@/components/site/SiteLoader";
 import CodeInjector from "@/components/site/CodeInjector";
 import VisitTracker from "@/components/site/VisitTracker";
 
@@ -197,6 +198,7 @@ function PageBodyFallback() {
 export default function HomePage() {
   return (
     <>
+      <SiteLoader />
       <a href="#hero-header" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-white focus:text-black focus:p-4">
         Skip to content
       </a>

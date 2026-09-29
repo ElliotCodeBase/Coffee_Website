@@ -18,6 +18,7 @@ function clamp(n: number, min = 0, max = 1) {
 export default function HeroStory({ settings }: { settings: SiteSettings | null }) {
   const heroImg = settings?.hero_image_url || FALLBACK_HERO_IMG;
   const storyImg = settings?.about_image_url || FALLBACK_STORY_IMG;
+  const BADGE_TEXT = `${(settings?.business_name || "Come by").toUpperCase().slice(0, 16)} \u2022 OUR STORY \u2022 `;
 
   const wrapperRef = useRef<HTMLDivElement>(null);
   const halfARef = useRef<HTMLDivElement>(null);
@@ -260,24 +261,18 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
           }}
         >
           <div className="absolute inset-0 bg-caffeine-dark/55 lg:hidden" />
-          {/* Steam: slow looping wisps rising on the open side of the panel. */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-y-0 right-[6%] hidden w-[34%] lg:block">
-            {[0, 1, 2, 3].map((n) => (
-              <svg
-                key={n}
-                viewBox="0 0 60 220"
-                className="story-wisp absolute bottom-[8%]"
-                style={{ left: `${8 + n * 22}%`, width: `${9 + (n % 2) * 4}%`, animationDelay: `${-n * 3.1}s`, animationDuration: `${11 + n * 1.7}s` }}
-              >
-                <path
-                  d="M30 220 C8 185 52 165 30 130 C8 95 52 75 30 40 C20 20 34 8 30 0"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            ))}
+          {/* Huge outlined "Our Story" drifting past behind the text, on a
+              very slow loop. Decoration only. */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-[5%] hidden overflow-hidden lg:block">
+            <div className="story-marquee">
+              {[0, 1].map((g) => (
+                <span key={g} className="story-marquee__group">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <span key={i}>Our Story</span>
+                  ))}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -384,86 +379,113 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
           </div>
         </div>
 
-        {/* Story text: one confident column on the dark side of the photo. */}
+        {/* Story text. Wide screens: headline on the left, the story in a
+            frosted card on the right. Everything below is the same elements
+            the scroll code above reveals, just arranged differently. */}
         <div
           ref={storyBlockRef}
-          className="absolute inset-0 flex items-center px-5 sm:px-10 lg:px-20 xl:px-32 pt-16 sm:pt-20 lg:pt-24 pb-24 sm:pb-28 lg:pb-32"
+          className="absolute inset-0 flex items-center px-5 sm:px-10 lg:px-20 xl:px-28 2xl:px-40 pt-16 sm:pt-20 lg:pt-24 pb-24 sm:pb-28 lg:pb-32"
         >
-          <div className="relative z-20 w-full max-w-2xl xl:max-w-[42rem]">
-            <div
-              ref={storyKickerRef}
-              className="mb-4 sm:mb-5 flex items-center gap-3 will-change-transform"
-              style={{ opacity: 0 }}
-            >
-              <span aria-hidden="true" className="story-kicker-dot h-2 w-2 rounded-full bg-caffeine-gold" />
-              <span className="text-xs sm:text-sm font-bold uppercase tracking-[0.32em] text-caffeine-gold">Our Story</span>
-              <span aria-hidden="true" className="h-px w-10 sm:w-16 bg-gradient-to-r from-caffeine-gold/70 to-transparent" />
-            </div>
-
-            <h2
-              className="font-cozy font-bold tracking-tight leading-[1.02] text-white text-balance"
-              style={{ fontSize: "clamp(2.1rem, min(7.4vh, 9vw), 5.6rem)" }}
-            >
-              {storyHeadlineWords.map((word, i) => (
-                <span key={i} className="inline-block overflow-hidden align-bottom pb-[0.12em] -mb-[0.12em]">
-                  <span
-                    ref={(el) => {
-                      storyWordRefs.current[i] = el;
-                    }}
-                    className={`inline-block will-change-transform ${
-                      i === storyHeadlineWords.length - 1 ? "story-shine" : ""
-                    }`}
-                    style={{ transform: "translateY(130%)" }}
-                  >
-                    {word}
-                    {i < storyHeadlineWords.length - 1 ? "\u00A0" : ""}
-                  </span>
-                </span>
-              ))}
-            </h2>
-
-            <span
-              ref={storyRuleRef}
-              aria-hidden="true"
-              className="mt-5 sm:mt-7 block h-[3px] w-28 origin-left rounded-full bg-gradient-to-r from-caffeine-gold to-caffeine-gold/0 will-change-transform"
-              style={{ transform: "scaleX(0)" }}
-            />
-
-            <div ref={storyBodyRef} className="mt-5 sm:mt-7 will-change-transform">
-              {/* The lead sentence hangs off a gold rail with a light that
-                  keeps travelling down it. */}
-              <div className="relative pl-5 sm:pl-7">
-                <span aria-hidden="true" className="absolute left-0 top-1 bottom-1 w-[2px] overflow-hidden rounded-full bg-caffeine-gold/25">
-                  <span className="story-trace absolute left-0 top-0 block h-10 w-full rounded-full bg-gradient-to-b from-transparent via-caffeine-gold to-transparent" />
-                </span>
-                <p
-                  className="font-cozy font-bold leading-snug text-caffeine-drip text-pretty"
-                  style={{ fontSize: "clamp(1.1rem, min(3.1vh, 4.8vw), 2rem)" }}
-                >
-                  {storyLead}
-                </p>
-                {storyRest && (
-                  <p
-                    className="mt-3 sm:mt-4 max-w-xl leading-relaxed text-stone-200"
-                    style={{ fontSize: "clamp(0.86rem, 1.95vh, 1.1rem)" }}
-                  >
-                    {storyRest}
-                  </p>
-                )}
-              </div>
-              <a
-                ref={storyLinkRef}
-                href="#location"
-                className="story-link group mt-5 sm:mt-6 ml-5 sm:ml-7 inline-flex items-center gap-3 rounded-full border border-caffeine-gold/60 py-2 pl-5 pr-2 text-sm sm:text-base font-bold text-caffeine-gold transition-colors duration-300 hover:bg-caffeine-gold hover:text-caffeine-dark focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold will-change-transform"
+          <div className="relative z-20 mx-auto w-full max-w-2xl xl:max-w-[88rem] xl:grid xl:grid-cols-[1.3fr_1fr] xl:items-center xl:gap-x-20">
+            <div>
+              <div
+                ref={storyKickerRef}
+                className="mb-4 sm:mb-5 flex items-center gap-3 will-change-transform"
                 style={{ opacity: 0 }}
               >
-                Come find us
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-caffeine-gold text-caffeine-dark transition-transform duration-300 ease-out group-hover:translate-x-1">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M5 12h14m0 0l-6-6m6 6l-6 6" />
-                  </svg>
+                <span aria-hidden="true" className="story-kicker-dot h-2 w-2 rounded-full bg-caffeine-gold" />
+                <span className="text-xs sm:text-sm font-bold uppercase tracking-[0.32em] text-caffeine-gold">Our Story</span>
+                <span aria-hidden="true" className="h-px w-10 sm:w-16 bg-gradient-to-r from-caffeine-gold/70 to-transparent" />
+              </div>
+
+              <h2
+                className="font-cozy font-bold tracking-tight leading-[1.02] text-white text-balance"
+                style={{ fontSize: "clamp(2.1rem, min(7.4vh, 9vw), 5.6rem)" }}
+              >
+                {storyHeadlineWords.map((word, i) => (
+                  <span key={i} className="inline-block overflow-hidden align-bottom pb-[0.12em] -mb-[0.12em]">
+                    <span
+                      ref={(el) => {
+                        storyWordRefs.current[i] = el;
+                      }}
+                      className={`inline-block will-change-transform ${
+                        i === storyHeadlineWords.length - 1 ? "story-shine" : ""
+                      }`}
+                      style={{ transform: "translateY(130%)" }}
+                    >
+                      {word}
+                      {i < storyHeadlineWords.length - 1 ? "\u00A0" : ""}
+                    </span>
+                  </span>
+                ))}
+              </h2>
+
+              <span
+                ref={storyRuleRef}
+                aria-hidden="true"
+                className="mt-5 sm:mt-7 block h-[3px] w-28 origin-left rounded-full bg-gradient-to-r from-caffeine-gold to-caffeine-gold/0 will-change-transform"
+                style={{ transform: "scaleX(0)" }}
+              />
+            </div>
+
+            <div ref={storyBodyRef} className="mt-7 sm:mt-9 xl:mt-0 will-change-transform">
+              <div className="story-card relative rounded-[1.6rem] border border-white/15 bg-black/30 px-5 pb-5 pt-9 shadow-2xl shadow-black/40 backdrop-blur-md sm:px-8 sm:pb-8 sm:pt-11">
+                <span
+                  aria-hidden="true"
+                  className="story-quote pointer-events-none absolute left-5 top-0 select-none font-cozy text-[4.5rem] font-bold leading-none text-caffeine-gold sm:left-8 sm:text-[6rem]"
+                  style={{ transformOrigin: "20% 80%" }}
+                >
+                  &ldquo;
                 </span>
-              </a>
+
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 120 120"
+                  className="story-badge pointer-events-none absolute -right-3 -top-9 hidden h-24 w-24 text-caffeine-gold sm:block xl:-right-8 xl:h-28 xl:w-28"
+                >
+                  <defs>
+                    <path id="story-badge-ring" d="M60 60 m-44 0 a44 44 0 1 1 88 0 a44 44 0 1 1 -88 0" />
+                  </defs>
+                  <text fill="currentColor" fontSize="10.5" fontWeight="700" letterSpacing="2">
+                    <textPath href="#story-badge-ring" textLength="272" lengthAdjust="spacing">
+                      {BADGE_TEXT}
+                    </textPath>
+                  </text>
+                </svg>
+
+                <div className="relative pl-5 sm:pl-6">
+                  <span aria-hidden="true" className="absolute left-0 top-1 bottom-1 w-[2px] overflow-hidden rounded-full bg-caffeine-gold/25">
+                    <span className="story-trace absolute left-0 top-0 block h-10 w-full rounded-full bg-gradient-to-b from-transparent via-caffeine-gold to-transparent" />
+                  </span>
+                  <p
+                    className="font-cozy font-bold leading-snug text-caffeine-drip text-pretty"
+                    style={{ fontSize: "clamp(1.05rem, min(2.9vh, 4.6vw), 1.85rem)" }}
+                  >
+                    {storyLead}
+                  </p>
+                  {storyRest && (
+                    <p
+                      className="mt-3 sm:mt-4 leading-relaxed text-stone-200"
+                      style={{ fontSize: "clamp(0.84rem, 1.9vh, 1.05rem)" }}
+                    >
+                      {storyRest}
+                    </p>
+                  )}
+                </div>
+                <a
+                  ref={storyLinkRef}
+                  href="#location"
+                  className="story-link group mt-5 sm:mt-6 ml-5 sm:ml-6 inline-flex items-center gap-3 rounded-full border border-caffeine-gold/60 py-2 pl-5 pr-2 text-sm sm:text-base font-bold text-caffeine-gold transition-colors duration-300 hover:bg-caffeine-gold hover:text-caffeine-dark focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-caffeine-gold will-change-transform"
+                  style={{ opacity: 0 }}
+                >
+                  Come find us
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-caffeine-gold text-caffeine-dark transition-transform duration-300 ease-out group-hover:translate-x-1">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M5 12h14m0 0l-6-6m6 6l-6 6" />
+                    </svg>
+                  </span>
+                </a>
+              </div>
             </div>
           </div>
         </div>

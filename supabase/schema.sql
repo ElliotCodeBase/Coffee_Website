@@ -188,6 +188,11 @@ create table public.theme_settings (
   color_accent text default '#432516',
   color_gold text default '#d99b26',
   color_drip text default '#fff3e3',
+  loader_enabled boolean default true,
+  loader_duration_ms int default 2400,
+  loader_frequency text default 'every',
+  loader_show_percent boolean default true,
+  loader_label text,
   font_pairing text not null default 'comfortaa-jakarta',
   updated_at timestamptz not null default now()
 );
