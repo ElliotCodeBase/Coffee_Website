@@ -35,8 +35,8 @@ const FRINGE: FringeDrip[] = (() => {
   let x = 24 + rand() * 20;
   while (x < 1440 - 20) {
     const roll = rand();
-    const w = roll < 0.3 ? 24 + rand() * 12 : roll < 0.8 ? 15 + rand() * 7 : 12 + rand() * 4;
-    const L = roll < 0.3 ? 16 + rand() * 18 : roll < 0.8 ? 46 + rand() * 50 : 120 + rand() * 80;
+    const w = roll < 0.24 ? 22 + rand() * 10 : roll < 0.72 ? 14 + rand() * 6 : 11 + rand() * 4;
+    const L = roll < 0.24 ? 16 + rand() * 18 : roll < 0.72 ? 42 + rand() * 46 : 100 + rand() * 90;
     out.push({
       cx: x,
       w,
@@ -44,11 +44,11 @@ const FRINGE: FringeDrip[] = (() => {
       r: w * 0.7 + 3,
       sy: 1.5 + rand() * 1.4,
       dd: rand() * 0.45,
-      bd: 3.2 + rand() * 3.4,
-      be: roll < 0.3 ? 1.12 : 1.18 + rand() * 0.22,
+      bd: 2.0 + rand() * 2.2,
+      be: roll < 0.24 ? 1.14 : 1.22 + rand() * 0.26,
       fd: -rand() * 6,
     });
-    x += 46 + rand() * 70;
+    x += 26 + rand() * 42;
   }
   return out;
 })();
@@ -79,7 +79,7 @@ function Fringe({ id, className, living = false }: { id: string; className: stri
               <rect x={d.cx - d.w / 2} y={12} width={d.w} height={d.L + 10} />
               <circle cx={d.cx} cy={22 + d.L} r={d.r} />
             </g>
-            {living && d.L > 100 && (
+            {living && d.L > 62 && (
               <circle
                 className="sl-fall"
                 cx={d.cx}
@@ -174,7 +174,7 @@ export default function LoaderClient({ config, preview = false }: { config: Load
     const finish = () => {
       html.classList.remove("sl-lock");
       setPhase("drain");
-      timers.push(window.setTimeout(() => setPhase("gone"), reduced ? 450 : 1700));
+      timers.push(window.setTimeout(() => setPhase("gone"), reduced ? 450 : 1500));
     };
 
     const tick = (now: number) => {

@@ -260,7 +260,7 @@ export default function Menu({ items }: { items: MenuItem[] }) {
       id="menu"
       className="relative scroll-mt-16 sm:scroll-mt-20 lg:scroll-mt-24 pt-40 sm:pt-52 lg:pt-64 xl:pt-72 pb-20 sm:pb-28 lg:pb-36 bg-caffeine-dark text-white px-5 sm:px-12 lg:px-20 [overflow-anchor:none]"
     >
-      <div ref={rowRef} className="max-w-screen-2xl mx-auto grid lg:grid-cols-12 gap-10 lg:gap-16">
+      <div ref={rowRef} data-scroll-focus="menu" className="max-w-screen-2xl mx-auto grid lg:grid-cols-12 gap-10 lg:gap-16">
         <div ref={leftColRef} className="lg:col-span-4 lg:sticky lg:top-32 self-start">
           <h2 className="font-cozy text-4xl sm:text-6xl lg:text-7xl font-bold leading-[1.02] text-balance">
             What we&apos;re serving

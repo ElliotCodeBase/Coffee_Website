@@ -1,3 +1,4 @@
+import PageHeader from "@/components/admin/PageHeader";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/data/auth";
@@ -33,12 +34,10 @@ export default async function TeamAdminPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-cozy font-bold text-2xl text-caffeine-dark">Team</h1>
-        <p className="text-sm text-stone-500 mt-1">
-          Add other admins (full access) or staff (menu, messages &amp; analytics). Developer accounts are managed separately.
-        </p>
-      </div>
+      <PageHeader
+        title="Team"
+        description="Add other admins (full access) or staff (menu, messages &amp; analytics). Developer accounts are managed separately."
+      />
       <StaffManager
         team={team}
         currentUserId={currentUser.id}

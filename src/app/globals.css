@@ -302,7 +302,7 @@ body {
     opacity: 0;
     transform-box: fill-box;
     transform-origin: 50% 50%;
-    animation: sl-fall 3.8s cubic-bezier(0.5, 0, 0.9, 0.6) infinite;
+    animation: sl-fall 2.6s cubic-bezier(0.5, 0, 0.9, 0.6) infinite;
     animation-delay: var(--fdel);
   }
   @keyframes sl-fall {
@@ -312,9 +312,9 @@ body {
   }
 
   .site-loader[data-phase="drain"] .sl-mover {
-    animation: sl-drain 1.55s cubic-bezier(0.55, 0.02, 0.85, 0.5) forwards;
+    animation: sl-drain 1.35s cubic-bezier(0.55, 0.02, 0.85, 0.5) forwards;
   }
-  .site-loader[data-phase="drain"] .sl-drip { animation: sl-stretch 1.4s cubic-bezier(0.4, 0, 0.9, 0.6) both; animation-delay: var(--dd); }
+  .site-loader[data-phase="drain"] .sl-drip { animation: sl-stretch 1.2s cubic-bezier(0.4, 0, 0.9, 0.6) both; animation-delay: var(--dd); }
   .site-loader[data-phase="drain"] .sl-drip-in,
   .site-loader[data-phase="drain"] .sl-fall { animation: none; }
   .site-loader[data-phase="drain"] .sl-fall { opacity: 0; }
@@ -333,11 +333,11 @@ body {
   /* Gold sweep that keeps gliding across the headline's last word. */
   .story-shine {
     color: transparent;
-    background-image: linear-gradient(100deg, var(--caffeine-gold) 0%, var(--caffeine-gold) 38%, #fff6df 50%, var(--caffeine-gold) 62%, var(--caffeine-gold) 100%);
-    background-size: 250% 100%;
+    background-image: linear-gradient(100deg, #ffffff 0%, #ffffff 36%, rgb(255 255 255 / 0.55) 50%, #ffffff 64%, #ffffff 100%);
+    background-size: 260% 100%;
     background-clip: text;
     -webkit-background-clip: text;
-    animation: story-shine 5.5s ease-in-out infinite;
+    animation: story-shine 4.8s ease-in-out infinite;
   }
   @keyframes story-shine {
     0% { background-position: 100% 0; }
@@ -351,41 +351,20 @@ body {
     0% { transform: translateY(-100%); }
     100% { transform: translateY(1400%); }
   }
-  /* Giant outlined "Our Story" gliding behind the text. */
-  .story-marquee {
-    display: flex;
-    width: max-content;
-    animation: story-marquee 90s linear infinite;
-  }
-  .story-marquee__group {
-    display: flex;
-    flex-shrink: 0;
-    gap: 0.5em;
-    padding-right: 0.5em;
-    font-family: var(--font-cozy);
-    font-weight: 700;
-    font-size: clamp(6rem, 24vh, 15rem);
-    line-height: 0.9;
-    white-space: nowrap;
-    color: transparent;
-    -webkit-text-stroke: 1.5px rgb(255 243 227 / 0.1);
-  }
-  @keyframes story-marquee {
-    to { transform: translateX(-50%); }
-  }
   /* Ring of text turning slowly on the story card's corner. */
   .story-badge { animation: story-spin 26s linear infinite; }
   @keyframes story-spin { to { transform: rotate(360deg); } }
-  /* The card and its opening quote mark float a few pixels, out of step. */
-  .story-card { animation: story-float 8s ease-in-out infinite; }
-  .story-quote { animation: story-quote 6s ease-in-out infinite; }
-  @keyframes story-float {
-    0%, 100% { translate: 0 0; }
-    50% { translate: 0 -7px; }
+  /* Light gliding along the hairline under the headline. */
+  .story-hairline__light { animation: story-hairline 4.2s cubic-bezier(0.5, 0, 0.5, 1) infinite; }
+  @keyframes story-hairline {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(400%); }
   }
-  @keyframes story-quote {
-    0%, 100% { transform: translateY(0) rotate(0deg); }
-    50% { transform: translateY(-4px) rotate(-4deg); }
+  /* The arrow in the button keeps nudging forward. */
+  .story-arrow svg { animation: story-nudge 2.4s ease-in-out infinite; }
+  @keyframes story-nudge {
+    0%, 60%, 100% { transform: translateX(0); }
+    80% { transform: translateX(3px); }
   }
 
   /* Milk drip edge motion lives in DripEdge.tsx (SVG SMIL), so it can keep
@@ -408,10 +387,9 @@ body {
     .story-kicker-dot,
     .sl-drip-in,
     .sl-fall,
-    .story-marquee,
     .story-badge,
-    .story-card,
-    .story-quote,
+    .story-hairline__light,
+    .story-arrow svg,
     .story-shine,
     .story-trace {
       animation: none;

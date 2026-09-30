@@ -1,3 +1,4 @@
+import PageHeader from "@/components/admin/PageHeader";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/data/auth";
 import { getLegalPage } from "@/lib/data/public";
@@ -19,13 +20,10 @@ export default async function LegalPagesAdminPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-cozy text-2xl font-bold text-caffeine-dark">Legal Pages</h1>
-        <p className="mt-1 text-sm text-stone-500">
-          Edit the Terms of Service and Privacy Policy shown on your public site. Visible here to admin and
-          developer accounts only.
-        </p>
-      </div>
+      <PageHeader
+        title="Legal Pages"
+        description="Edit the Terms of Service and Privacy Policy shown on your public site. Visible here to admin and developer accounts only."
+      />
       <LegalPagesForm terms={terms} privacy={privacy} />
     </div>
   );

@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/data/auth";
-import { getThemeSettings } from "@/lib/data/public";
+import { getSiteSettings, getThemeSettings } from "@/lib/data/public";
 import ThemeForm from "@/components/admin/ThemeForm";
+import LoaderSettingsForm from "@/components/admin/LoaderSettingsForm";
+import AdminTabs from "@/components/admin/AdminTabs";
+import PageHeader from "@/components/admin/PageHeader";
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -15,18 +18,30 @@ export default async function ThemeAdminPage() {
     redirect("/admin");
   }
 
-  const theme = await getThemeSettings();
+  const [theme, settings] = await Promise.all([getThemeSettings(), getSiteSettings()]);
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-cozy font-bold text-2xl text-caffeine-dark">Theme &amp; Colors</h1>
-        <p className="text-sm text-stone-500 mt-1">
-          Pick a color palette and font pairing for the header, body, buttons and text. Changes apply site-wide
-          the moment you save — no redeploy needed.
-        </p>
-      </div>
-      <ThemeForm theme={theme} />
+      <PageHeader
+        title="Look & Feel"
+        description="Choose the colors, the fonts and the opening animation of your website. Every change goes live the moment you save — nothing to publish."
+      />
+      <AdminTabs
+        tabs={[
+          {
+            key: "colors",
+            label: "Colors & fonts",
+            hint: "How the site looks",
+            content: <ThemeForm theme={theme} />,
+          },
+          {
+            key: "loading",
+            label: "Loading animation",
+            hint: "What shows when it opens",
+            content: <LoaderSettingsForm theme={theme} businessName={settings?.business_name?.trim() || "your business"} />,
+          },
+        ]}
+      />
     </div>
   );
 }

@@ -56,9 +56,9 @@ function makeDrips(): Drip[] {
     const roll = rand();
     // Three families so the edge never reads as a repeat: fat short blobs,
     // medium drips, and a few long thin runners.
-    const family = roll < 0.3 ? 0 : roll < 0.8 ? 1 : 2;
-    const w = family === 0 ? 26 + rand() * 12 : family === 1 ? 16 + rand() * 7 : 13 + rand() * 4;
-    const L = family === 0 ? 14 + rand() * 16 : family === 1 ? 44 + rand() * 46 : 110 + rand() * 70;
+    const family = roll < 0.24 ? 0 : roll < 0.72 ? 1 : 2;
+    const w = family === 0 ? 22 + rand() * 10 : family === 1 ? 14 + rand() * 6 : 11 + rand() * 4;
+    const L = family === 0 ? 14 + rand() * 16 : family === 1 ? 40 + rand() * 46 : 90 + rand() * 90;
     const r = w * (family === 0 ? 0.6 : 0.72) + 3;
     out.push({
       cx: x,
@@ -66,20 +66,20 @@ function makeDrips(): Drip[] {
       L,
       r,
       kind: family === 0 ? "still" : "flow",
-      e: 12 + rand() * 12,
-      dur: 9 + rand() * 6,
+      e: 14 + rand() * 14,
+      dur: 5.6 + rand() * 3.6,
       begin: -rand() * 14,
       fall: 130 + rand() * 60,
     });
-    x += 44 + rand() * 78;
+    x += 26 + rand() * 44;
   }
   // The long runners, spread across the width, get the full stretch → pinch → fall.
   let last = -1e9;
   out.forEach((d) => {
-    if (d.L > 105 && d.cx - last > 260) {
+    if (d.L > 80 && d.cx - last > 150) {
       d.kind = "drop";
       d.e = 26 + rand() * 16;
-      d.dur = 12 + rand() * 6;
+      d.dur = 7.5 + rand() * 3.5;
       last = d.cx;
     }
   });

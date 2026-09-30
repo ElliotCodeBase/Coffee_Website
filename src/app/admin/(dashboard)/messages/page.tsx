@@ -1,3 +1,4 @@
+import PageHeader from "@/components/admin/PageHeader";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/data/auth";
 import MessagesList from "@/components/admin/MessagesList";
@@ -13,10 +14,10 @@ export default async function MessagesAdminPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-cozy font-bold text-2xl text-caffeine-dark">Messages</h1>
-        <p className="text-sm text-stone-500 mt-1">Contact form submissions, saved as a backup even after email is sent.</p>
-      </div>
+      <PageHeader
+        title="Messages"
+        description="Everything sent through your contact form. Every message is also kept here, even after the email has been delivered."
+      />
       <MessagesList submissions={submissions ?? []} canManage={canManage} />
     </div>
   );

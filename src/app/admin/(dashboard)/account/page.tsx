@@ -1,3 +1,4 @@
+import PageHeader from "@/components/admin/PageHeader";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/data/auth";
 import ChangePasswordForm from "@/components/admin/ChangePasswordForm";
@@ -8,10 +9,10 @@ export default async function AccountPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-cozy font-bold text-2xl text-caffeine-dark">My Account</h1>
-        <p className="text-sm text-stone-500 mt-1">{user.email}</p>
-      </div>
+      <PageHeader
+        title="My Account"
+        description={user.email ?? undefined}
+      />
       <ChangePasswordForm />
     </div>
   );

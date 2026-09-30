@@ -69,50 +69,72 @@ export async function updateTheme(formData: FormData): Promise<ActionResult> {
   if (!isFontPairingKey(fontPairing)) return { error: "Choose one of the listed font pairings." };
   values.font_pairing = fontPairing;
 
-  // Loading animation options (see src/lib/loader-config.ts).
-  const rawDuration = Number(formData.get("loader_duration_ms"));
-  if (!Number.isFinite(rawDuration) || rawDuration < LOADER_MIN_MS || rawDuration > LOADER_MAX_MS) {
-    return { error: `Loading animation length must be between ${LOADER_MIN_MS / 1000} and ${LOADER_MAX_MS / 1000} seconds.` };
-  }
-  const frequency = String(formData.get("loader_frequency") ?? "every");
-  if (!isLoaderFrequency(frequency)) return { error: "Choose how often the loading animation shows." };
-  const loaderValues = {
-    loader_enabled: formData.get("loader_enabled") === "on",
-    loader_duration_ms: clampDuration(rawDuration),
-    loader_frequency: frequency,
-    loader_show_percent: formData.get("loader_show_percent") === "on",
-    loader_label: cleanLabel(formData.get("loader_label")) || null,
-  };
-
-  const now = new Date().toISOString();
-  let notice: string | undefined;
-  let { error } = await check.supabase
+  const { data: updated, error } = await check.supabase
     .from("theme_settings")
-    .update({ ...values, ...loaderValues, updated_at: now })
-    .eq("id", 1);
-
-  // The loader columns come from supabase/migration_theme_loader.sql. If it
-  // has not been run yet, still save the colors and fonts instead of
-  // failing the whole form, and say what is missing.
-  if (error && (error.code === "42703" || /loader_/.test(error.message))) {
-    ({ error } = await check.supabase
-      .from("theme_settings")
-      .update({ ...values, updated_at: now })
-      .eq("id", 1));
-    if (!error) {
-      notice =
-        "Colors and fonts saved, but the loading animation options were not: run supabase/migration_theme_loader.sql in the Supabase SQL Editor first.";
-    }
-  }
+    .update({ ...values, updated_at: new Date().toISOString() })
+    .eq("id", 1)
+    .select("id");
 
   if (error) {
     console.error("updateTheme error:", error.message);
     return { error: "Failed to save theme." };
   }
+  // RLS can "succeed" while changing nothing; never report that as saved.
+  if (!updated || updated.length === 0) {
+    return { error: "Nothing was saved — your account may not be allowed to edit the theme." };
+  }
 
   revalidatePath("/", "layout");
   revalidatePath("/admin/theme");
-  return notice ? { success: true, notice } : { success: true };
+  return { success: true };
+}
+
+/* Loading animation options are saved on their own (not together with colors
+   and fonts) so a problem in one form can never silently block the other.
+   The row is read back after saving, so "Saved" only ever means "it is in
+   the database". */
+export async function updateLoaderSettings(formData: FormData): Promise<ActionResult> {
+  const check = await assertCanEditTheme();
+  if (!check.ok) return { error: "You do not have permission to edit the loading animation." };
+
+  const rawSecs = Number(formData.get("loader_seconds"));
+  const rawMs = Math.round(rawSecs * 1000);
+  if (!Number.isFinite(rawSecs) || rawMs < LOADER_MIN_MS || rawMs > LOADER_MAX_MS) {
+    return { error: `Length must be between ${LOADER_MIN_MS / 1000} and ${LOADER_MAX_MS / 1000} seconds.` };
+  }
+  const frequency = String(formData.get("loader_frequency") ?? "every");
+  if (!isLoaderFrequency(frequency)) return { error: "Choose how often the loading animation shows." };
+
+  const values = {
+    loader_enabled: formData.get("loader_enabled") === "on",
+    loader_duration_ms: clampDuration(rawMs),
+    loader_frequency: frequency,
+    loader_show_percent: formData.get("loader_show_percent") === "on",
+    loader_label: cleanLabel(formData.get("loader_label")) || null,
+  };
+
+  const { data: updated, error } = await check.supabase
+    .from("theme_settings")
+    .update({ ...values, updated_at: new Date().toISOString() })
+    .eq("id", 1)
+    .select("loader_enabled, loader_duration_ms, loader_frequency, loader_show_percent, loader_label");
+
+  if (error) {
+    console.error("updateLoaderSettings error:", error.message);
+    if (error.code === "42703" || /loader_/.test(error.message)) {
+      return { error: "The database is missing the loading-animation columns. Run supabase/migration_theme_loader.sql in the Supabase SQL Editor, then try again." };
+    }
+    return { error: "Failed to save the loading animation." };
+  }
+  const row = updated?.[0];
+  if (!row) return { error: "Nothing was saved — your account may not be allowed to edit the theme." };
+  if (row.loader_duration_ms !== values.loader_duration_ms || row.loader_enabled !== values.loader_enabled) {
+    return { error: "The database did not keep your changes. Please try again." };
+  }
+
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/theme");
+  return { success: true };
 }
 
 export async function createCodeSnippet(formData: FormData): Promise<ActionResult> {

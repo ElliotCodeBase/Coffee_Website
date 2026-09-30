@@ -1,3 +1,4 @@
+import PageHeader from "@/components/admin/PageHeader";
 import { getImageHistoryDiagnostics } from "@/lib/data/public";
 import ImageHistoryManager from "@/components/admin/ImageHistoryManager";
 
@@ -6,12 +7,10 @@ export default async function ImageHistoryAdminPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-cozy font-bold text-2xl text-caffeine-dark">Image History</h1>
-        <p className="text-sm text-stone-500 mt-1">
-          Every previous logo, hero, and story image saved from Supabase, in one place.
-        </p>
-      </div>
+      <PageHeader
+        title="Image History"
+        description="Every previous logo, hero, and story image saved from Supabase, in one place."
+      />
       <ImageHistoryManager diagnostics={diagnostics} />
     </div>
   );

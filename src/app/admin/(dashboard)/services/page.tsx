@@ -1,3 +1,4 @@
+import PageHeader from "@/components/admin/PageHeader";
 import { createClient } from "@/lib/supabase/server";
 import ServicesManager from "@/components/admin/ServicesManager";
 
@@ -9,12 +10,10 @@ export default async function ServicesAdminPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-cozy font-bold text-2xl text-caffeine-dark">Our Services</h1>
-        <p className="text-sm text-stone-500 mt-1">
-          The icon grid shown on the front page between your story and the menu.
-        </p>
-      </div>
+      <PageHeader
+        title="Our Services"
+        description="The icon grid shown on the front page between your story and the menu."
+      />
       <ServicesManager items={items ?? []} />
     </div>
   );

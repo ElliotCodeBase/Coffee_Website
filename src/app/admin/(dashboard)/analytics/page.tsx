@@ -1,3 +1,4 @@
+import PageHeader from "@/components/admin/PageHeader";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/data/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -41,12 +42,10 @@ export default async function AnalyticsPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-cozy font-bold text-2xl text-caffeine-dark">Analytics</h1>
-        <p className="text-sm text-stone-500 mt-1">
-          How many people are visiting your site, broken down by day, week, month, or year.
-        </p>
-      </div>
+      <PageHeader
+        title="Visitors"
+        description="How many people are visiting your site, broken down by day, week, month, or year."
+      />
 
       <VisitorsChart data={chartData} totalVisits={timestamps.length} />
 

@@ -1,3 +1,4 @@
+import PageHeader from "@/components/admin/PageHeader";
 import { createClient } from "@/lib/supabase/server";
 import CustomCodeManager from "@/components/admin/CustomCodeManager";
 
@@ -10,12 +11,10 @@ export default async function CustomCodeAdminPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-cozy font-bold text-2xl text-caffeine-dark">Custom Code</h1>
-        <p className="text-sm text-stone-500 mt-1">
-          Developer-only. Inject raw HTML/CSS/JS into the live site (analytics, pixels, custom widgets).
-        </p>
-      </div>
+      <PageHeader
+        title="Custom Code"
+        description="Developer-only. Inject raw HTML/CSS/JS into the live site (analytics, pixels, custom widgets)."
+      />
       <CustomCodeManager snippets={snippets ?? []} />
     </div>
   );

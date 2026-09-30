@@ -1,5 +1,6 @@
 "use client";
 
+import { scrollToSection } from "@/lib/scroll-to-section";
 import { useEffect, useState } from "react";
 import type { NavLink, SiteSettings } from "@/types/database";
 
@@ -51,10 +52,9 @@ export default function Header({
   function handleNavClick(e: React.MouseEvent<HTMLAnchorElement>, href: string) {
     /* Only intercept anchor links. Let external links open normally. */
     if (!href.startsWith("#")) return;
-    const target = document.querySelector(href);
-    if (!target) return;
+    if (!document.querySelector(href)) return;
     e.preventDefault();
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    scrollToSection(href);
     setMobileOpen(false);
   }
 

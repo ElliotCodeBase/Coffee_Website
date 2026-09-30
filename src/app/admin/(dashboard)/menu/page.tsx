@@ -1,3 +1,4 @@
+import PageHeader from "@/components/admin/PageHeader";
 import { createClient } from "@/lib/supabase/server";
 import MenuItemsManager from "@/components/admin/MenuItemsManager";
 
@@ -9,10 +10,11 @@ export default async function MenuAdminPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-cozy font-bold text-2xl text-caffeine-dark">Menu Items</h1>
-        <p className="text-sm text-stone-500 mt-1">Add, edit, or remove drinks and pastries shown on your site.</p>
-      </div>
+      <PageHeader
+        title="Menu items"
+        description="Add, edit, hide or remove the drinks and pastries shown on your website."
+        tips={["Use “Hide” instead of deleting when something is just sold out for a while."]}
+      />
       <MenuItemsManager items={items ?? []} />
     </div>
   );

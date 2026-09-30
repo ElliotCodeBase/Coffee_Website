@@ -1,3 +1,4 @@
+import PageHeader from "@/components/admin/PageHeader";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/data/auth";
 import UsersManager from "@/components/admin/UsersManager";
@@ -23,10 +24,10 @@ export default async function UsersAdminPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="font-cozy font-bold text-2xl text-caffeine-dark">Users &amp; Roles</h1>
-        <p className="text-sm text-stone-500 mt-1">Developer-only. Invite staff and manage who can access what.</p>
-      </div>
+      <PageHeader
+        title="Users &amp; Roles"
+        description="Developer-only. Invite staff and manage who can access what."
+      />
       <UsersManager users={users} currentUserId={currentUser?.id || ""} />
     </div>
   );

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import PageHeader from "@/components/admin/PageHeader";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/data/auth";
 import { ADMIN_ICONS } from "@/components/admin/icons";
@@ -39,6 +40,15 @@ function formatDate(iso: string): string {
     : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+function weekAgoIso(): string {
+  return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function greeting(): string {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+}
+
 function StatCard({
   href,
   icon,
@@ -62,16 +72,14 @@ function StatCard({
       }`}
     >
       <span
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-md ${
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
           highlight ? "bg-blue-100 text-blue-700" : "bg-stone-100 text-caffeine-accent"
         }`}
       >
         <Icon d={icon} />
       </span>
       <span className="min-w-0">
-        <span className="block font-cozy text-3xl font-bold leading-none text-caffeine-dark tabular-nums">
-          {value.toLocaleString()}
-        </span>
+        <span className="block font-cozy text-3xl font-bold leading-none text-caffeine-dark tabular-nums">{value.toLocaleString()}</span>
         <span className="mt-1.5 block text-sm font-semibold text-stone-700">{label}</span>
         <span className="block text-xs text-stone-400">{hint}</span>
       </span>
@@ -79,29 +87,32 @@ function StatCard({
   );
 }
 
-function ShortcutRow({ href, icon, title, description }: { href: string; icon: string; title: string; description: string }) {
+function ActionCard({ href, icon, title, description }: { href: string; icon: string; title: string; description: string }) {
   return (
     <Link
       href={href}
-      className="group flex items-center gap-3 rounded-md border border-transparent p-2.5 transition-colors hover:border-stone-200 hover:bg-stone-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-caffeine-dark"
+      className="group flex items-center gap-4 rounded-xl border border-stone-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-caffeine-dark/40 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-caffeine-dark"
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-stone-100 text-caffeine-accent">
-        <Icon d={icon} className="w-4 h-4" />
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-caffeine-dark text-white">
+        <Icon d={icon} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-caffeine-dark">{title}</span>
-        <span className="block truncate text-xs text-stone-500">{description}</span>
+        <span className="block text-sm font-bold text-caffeine-dark">{title}</span>
+        <span className="block text-xs leading-snug text-stone-500">{description}</span>
       </span>
-      <Icon d={ADMIN_ICONS.chevronRight} className="w-4 h-4 shrink-0 text-stone-300 transition-colors group-hover:text-stone-500" />
+      <Icon d={ADMIN_ICONS.chevronRight} className="h-4 w-4 shrink-0 text-stone-300 transition-colors group-hover:text-caffeine-dark" />
     </Link>
   );
 }
+
+type Attention = { href: string; tone: "blue" | "amber"; text: string; cta: string };
 
 export default async function AdminOverviewPage() {
   const supabase = await createClient();
   const user = await getCurrentUser();
   const isAdmin = user?.profile?.role === "admin";
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const canEditSite = user?.profile?.role === "admin" || user?.profile?.role === "developer";
+  const weekAgo = weekAgoIso();
   const head = { count: "exact" as const, head: true };
 
   const [menuTotal, menuHidden, serviceTotal, serviceHidden, msgNew, msgTotal, msgFailed, recent, visitsTotal, visitsWeek] = await Promise.all([
@@ -125,38 +136,115 @@ export default async function AdminOverviewPage() {
 
   const newCount = msgNew.count ?? 0;
   const failedCount = msgFailed.count ?? 0;
+  const hiddenMenu = menuHidden.count ?? 0;
   const recentMessages = (recent.data ?? []) as Pick<ContactSubmission, "id" | "name" | "topic" | "message" | "status" | "created_at">[];
   const firstName = user?.profile?.full_name?.trim().split(/\s+/)[0];
 
+  const attention: Attention[] = [];
+  if (newCount > 0) {
+    attention.push({
+      href: "/admin/messages",
+      tone: "blue",
+      text: `${newCount} new ${newCount === 1 ? "message is" : "messages are"} waiting for a reply.`,
+      cta: "Open messages",
+    });
+  }
+  if (failedCount > 0) {
+    attention.push({
+      href: "/admin/messages",
+      tone: "amber",
+      text: `${failedCount} ${failedCount === 1 ? "message" : "messages"} couldn't be emailed to you. They're safe in Messages.`,
+      cta: "See them",
+    });
+  }
+  if (hiddenMenu > 0) {
+    attention.push({
+      href: "/admin/menu",
+      tone: "amber",
+      text: `${hiddenMenu} menu ${hiddenMenu === 1 ? "item is" : "items are"} hidden from the website right now.`,
+      cta: "Review menu",
+    });
+  }
+
   return (
     <div className="max-w-6xl">
-      <div className="mb-8">
-        <h1 className="font-cozy font-bold text-2xl text-caffeine-dark">Welcome{firstName ? `, ${firstName}` : ""}</h1>
-        <p className="text-sm text-stone-500 mt-1">A quick look at your menu, messages and visitors.</p>
-      </div>
+      <PageHeader
+        title={`${greeting()}${firstName ? `, ${firstName}` : ""}`}
+        description="Here's what needs you today, and the quickest ways to update your website."
+        actions={
+          <Link
+            href="/"
+            target="_blank"
+            className="inline-flex items-center gap-2 rounded-md border border-stone-300 bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 transition-colors hover:border-caffeine-dark hover:text-caffeine-dark"
+          >
+            <Icon d={ADMIN_ICONS.external} className="h-4 w-4" />
+            View live website
+          </Link>
+        }
+      />
 
-      {failedCount > 0 && (
-        <Link
-          href="/admin/messages"
-          className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 transition-colors hover:border-amber-300"
-        >
-          <Icon d={ADMIN_ICONS.alert} className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-          <span className="text-sm text-amber-900">
-            <span className="font-bold">
-              {failedCount} {failedCount === 1 ? "message" : "messages"} couldn&apos;t be emailed to you.
-            </span>{" "}
-            They&apos;re safe in Messages. Check the email settings, then reply from there.
-          </span>
-        </Link>
-      )}
+      <section aria-labelledby="attention-heading" className="mb-8">
+        <h2 id="attention-heading" className="mb-3 font-cozy text-lg font-bold text-caffeine-dark">
+          Needs your attention
+        </h2>
+        {attention.length === 0 ? (
+          <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-sm font-medium text-green-800">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-green-600 text-white" aria-hidden="true">✓</span>
+            You&apos;re all caught up — no new messages and nothing hidden.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {attention.map((a) => (
+              <li key={a.text}>
+                <Link
+                  href={a.href}
+                  className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 transition-colors ${
+                    a.tone === "blue"
+                      ? "border-blue-200 bg-blue-50 text-blue-900 hover:border-blue-300"
+                      : "border-amber-200 bg-amber-50 text-amber-900 hover:border-amber-300"
+                  }`}
+                >
+                  <span className="flex min-w-0 items-start gap-3 text-sm font-medium">
+                    <Icon d={a.tone === "blue" ? ADMIN_ICONS.messages : ADMIN_ICONS.alert} className="mt-0.5 h-5 w-5 shrink-0" />
+                    <span>{a.text}</span>
+                  </span>
+                  <span className="shrink-0 text-sm font-bold underline underline-offset-4">{a.cta}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-      <div className={`grid gap-4 sm:grid-cols-2 ${isAdmin ? "lg:grid-cols-3" : ""}`}>
+      <section aria-labelledby="actions-heading" className="mb-8">
+        <h2 id="actions-heading" className="mb-3 font-cozy text-lg font-bold text-caffeine-dark">
+          What would you like to do?
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ActionCard href="/admin/menu" icon={ADMIN_ICONS.plus} title="Add or edit a menu item" description="Prices, descriptions, photos, or hide something that's sold out." />
+          <ActionCard href="/admin/messages" icon={ADMIN_ICONS.messages} title="Read and reply to messages" description="Questions and requests from your contact form." />
+          {canEditSite && (
+            <ActionCard href="/admin/site-info" icon={ADMIN_ICONS.siteInfo} title="Change hours, text or photos" description="Opening hours, your story, headline and contact details." />
+          )}
+          {canEditSite && (
+            <ActionCard href="/admin/theme" icon={ADMIN_ICONS.theme} title="Change colors or the loading animation" description="Pick a palette and fonts, or adjust the opening animation." />
+          )}
+          {isAdmin && (
+            <ActionCard href="/admin/staff" icon={ADMIN_ICONS.team} title="Invite someone to help" description="Give a team member staff access to menu and messages." />
+          )}
+          {isAdmin && (
+            <ActionCard href="/admin/analytics" icon={ADMIN_ICONS.analytics} title="See how many people visit" description="Visits by day, week, month or year." />
+          )}
+        </div>
+      </section>
+
+      <div className={`grid gap-4 sm:grid-cols-2 ${isAdmin ? "lg:grid-cols-4" : ""}`}>
         <StatCard
           href="/admin/menu"
           icon={ADMIN_ICONS.menu}
           label="Menu items"
           value={menuTotal.count ?? 0}
-          hint={(menuHidden.count ?? 0) > 0 ? `${menuHidden.count} hidden from the site` : "All shown on the site"}
+          hint={hiddenMenu > 0 ? `${hiddenMenu} hidden from the site` : "All shown on the site"}
         />
         <StatCard
           href="/admin/messages"
@@ -186,69 +274,48 @@ export default async function AdminOverviewPage() {
         )}
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-3">
-        <section className="min-w-0 rounded-xl border border-stone-200 bg-white p-5 sm:p-6 lg:col-span-2">
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="font-cozy font-bold text-lg text-caffeine-dark">Recent messages</h2>
-              <p className="text-sm text-stone-500 mt-0.5">The latest from your contact form.</p>
-            </div>
-            <Link href="/admin/messages" className="shrink-0 text-sm font-semibold text-caffeine-accent hover:underline">
-              View all
-            </Link>
+      <section className="mt-8 min-w-0 rounded-xl border border-stone-200 bg-white p-5 sm:p-6">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="font-cozy text-lg font-bold text-caffeine-dark">Recent messages</h2>
+            <p className="mt-0.5 text-sm text-stone-500">The latest from your contact form.</p>
           </div>
+          <Link href="/admin/messages" className="shrink-0 text-sm font-semibold text-caffeine-accent hover:underline">
+            View all
+          </Link>
+        </div>
 
-          {recentMessages.length === 0 ? (
-            <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-stone-300 px-4 text-center text-sm text-stone-400">
-              No messages yet. New contact form messages will show up here.
-            </div>
-          ) : (
-            <ul className="divide-y divide-stone-100">
-              {recentMessages.map((m) => (
-                <li key={m.id}>
-                  <Link
-                    href="/admin/messages"
-                    className="-mx-2 flex items-start justify-between gap-4 rounded-md px-2 py-3 transition-colors hover:bg-stone-50"
-                  >
-                    <span className="min-w-0">
-                      <span className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-bold text-caffeine-dark">{m.name}</span>
-                        <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_STYLES[m.status]}`}>
-                          {m.status}
+        {recentMessages.length === 0 ? (
+          <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-stone-300 px-4 text-center text-sm text-stone-400">
+            No messages yet. New contact form messages will show up here.
+          </div>
+        ) : (
+          <ul className="divide-y divide-stone-100">
+            {recentMessages.map((m) => (
+              <li key={m.id}>
+                <Link
+                  href="/admin/messages"
+                  className="-mx-2 flex items-start justify-between gap-4 rounded-md px-2 py-3 transition-colors hover:bg-stone-50"
+                >
+                  <span className="min-w-0">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-bold text-caffeine-dark">{m.name}</span>
+                      <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_STYLES[m.status]}`}>{m.status}</span>
+                      {m.topic && (
+                        <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-stone-500">
+                          {TOPIC_LABELS[m.topic] ?? m.topic}
                         </span>
-                        {m.topic && (
-                          <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-stone-500">
-                            {TOPIC_LABELS[m.topic] ?? m.topic}
-                          </span>
-                        )}
-                      </span>
-                      <span className="mt-0.5 line-clamp-1 text-sm text-stone-500">{m.message}</span>
+                      )}
                     </span>
-                    <span className="shrink-0 text-xs text-stone-400">{formatDate(m.created_at)}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="min-w-0 rounded-xl border border-stone-200 bg-white p-5 sm:p-6">
-          <h2 className="font-cozy font-bold text-lg text-caffeine-dark">Shortcuts</h2>
-          <p className="text-sm text-stone-500 mt-0.5 mb-3">Jump to what you edit most.</p>
-          <div className="-mx-1 space-y-0.5">
-            <ShortcutRow href="/admin/site-info" icon={ADMIN_ICONS.siteInfo} title="Site info" description="Logo, hero, hours, contact" />
-            <ShortcutRow href="/admin/menu" icon={ADMIN_ICONS.menu} title="Menu items" description="Add, edit or hide drinks and pastries" />
-            {isAdmin && (
-              <ShortcutRow href="/admin/services" icon={ADMIN_ICONS.services} title="Our Services" description="Edit the icon grid on the front page" />
-            )}
-            <ShortcutRow href="/admin/messages" icon={ADMIN_ICONS.messages} title="Messages" description="Read and reply to messages" />
-            <ShortcutRow href="/admin/staff" icon={ADMIN_ICONS.team} title="Team" description="Invite admins and staff" />
-            {isAdmin && (
-              <ShortcutRow href="/admin/analytics" icon={ADMIN_ICONS.analytics} title="Analytics" description="See how many people visit" />
-            )}
-          </div>
-        </section>
-      </div>
+                    <span className="mt-0.5 line-clamp-1 text-sm text-stone-500">{m.message}</span>
+                  </span>
+                  <span className="shrink-0 text-xs text-stone-400">{formatDate(m.created_at)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
