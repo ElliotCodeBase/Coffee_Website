@@ -196,19 +196,31 @@ body {
   }
 
   /* Lamplight breathing over the hero — wider swing than a subtle glow. */
+  /* No mix-blend-mode: a blend over the whole hero forced the browser to
+     re-composite the full screen on every frame of this animation. */
   .hero-glow {
     background: radial-gradient(
-      62% 58% at 72% 28%,
-      color-mix(in srgb, var(--caffeine-gold) 48%, transparent),
-      transparent 72%
+      closest-side,
+      color-mix(in srgb, var(--caffeine-gold) 36%, transparent),
+      transparent 100%
     );
-    mix-blend-mode: screen;
     opacity: 0.2;
     animation: hero-glow 7s ease-in-out infinite alternate;
   }
   @keyframes hero-glow {
-    from { opacity: 0.14; transform: scale(1); }
-    to { opacity: 0.58; transform: scale(1.08); }
+    from { opacity: 0.14; }
+    to { opacity: 0.6; }
+  }
+  /* Ambient motion sleeps when it can't be seen (classes set by HeroStory). */
+  .hero-done .hero-glow,
+  .hero-done .hero-drift:not(.hero-drift--story) { animation-play-state: paused; }
+  .hero-drift--story { animation-play-state: paused; }
+  .story-on .hero-drift--story { animation-play-state: running; }
+  /* Phones: skip the ambient glow and the slow picture drift entirely — the
+     biggest saving on low-power GPUs, and barely noticeable on a small screen. */
+  @media (max-width: 767px) {
+    .hero-glow { display: none; }
+    .hero-drift { animation: none; }
   }
 
   /* Menu rows rise and settle in when a category is opened — fade-up plus
@@ -232,6 +244,65 @@ body {
     50% { opacity: 1; transform: scale(1.35); }
   }
 
+  /* ---- Milk drips (MilkDrips.tsx): transforms only, no filters ---- */
+  .md-stem { transform-box: fill-box; transform-origin: 50% 0; }
+  .md-falling { opacity: 0; transform-box: fill-box; transform-origin: 50% 50%; }
+
+  .md-flow .md-stem { animation: md-stem-flow var(--dur) ease-in-out var(--del) infinite; }
+  .md-flow .md-bulb { animation: md-bulb-flow var(--dur) ease-in-out var(--del) infinite; }
+  @keyframes md-stem-flow {
+    0%, 100% { transform: scaleY(1); }
+    50% { transform: scaleY(calc(1 + var(--es))); }
+  }
+  @keyframes md-bulb-flow {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(var(--e)); }
+  }
+
+  /* Long drips: swell, stretch, the drop lets go, the stem snaps back. */
+  .md-drop .md-stem { animation: md-stem-drop var(--dur) cubic-bezier(0.4, 0, 0.6, 1) var(--del) infinite; }
+  .md-drop .md-bulb { animation: md-bulb-drop var(--dur) cubic-bezier(0.4, 0, 0.6, 1) var(--del) infinite; }
+  .md-drop .md-falling { animation: md-falling var(--dur) linear var(--del) infinite; }
+  @keyframes md-stem-drop {
+    0% { transform: scaleY(1); }
+    28% { transform: scaleY(calc(1 + var(--es) * 0.4)); }
+    62% { transform: scaleY(calc(1 + var(--es))); }
+    70% { transform: scaleY(calc(1 - var(--sb))); }
+    82% { transform: scaleY(calc(1 + var(--sb) * 0.5)); }
+    100% { transform: scaleY(1); }
+  }
+  @keyframes md-bulb-drop {
+    0% { transform: translateY(0); }
+    28% { transform: translateY(calc(var(--e) * 0.4)); }
+    62% { transform: translateY(var(--e)); }
+    70% { transform: translateY(-6px); }
+    82% { transform: translateY(3px); }
+    100% { transform: translateY(0); }
+  }
+  @keyframes md-falling {
+    0%, 60% { opacity: 0; transform: translateY(var(--e)); }
+    62% { opacity: 1; transform: translateY(var(--e)); animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1); }
+    68% { opacity: 1; transform: translateY(calc(var(--e) + 5px)); animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.5); }
+    96% { opacity: 1; transform: translateY(calc(var(--e) + var(--fall))) scale(0.9, 1.5); }
+    100% { opacity: 0; transform: translateY(calc(var(--e) + var(--fall))) scale(0.9, 1.5); }
+  }
+
+  /* The loader's trailing tails while the milk falls away. */
+  .site-loader[data-phase="drain"] .md-stem {
+    animation: md-stem-drain 1.2s cubic-bezier(0.4, 0, 0.9, 0.6) var(--dd) both;
+  }
+  .site-loader[data-phase="drain"] .md-bulb {
+    animation: md-bulb-drain 1.2s cubic-bezier(0.4, 0, 0.9, 0.6) var(--dd) both;
+  }
+  .site-loader[data-phase="drain"] .md-falling { animation: none; opacity: 0; }
+  @keyframes md-stem-drain { to { transform: scaleY(var(--sy)); } }
+  @keyframes md-bulb-drain { to { transform: translateY(calc((var(--sy) - 1) * (var(--L) + 6px))); } }
+
+  /* Paused while the strip is off screen (set from DripEdge). */
+  .md-paused .md-stem,
+  .md-paused .md-bulb,
+  .md-paused .md-falling { animation-play-state: paused; }
+
   /* ---- Opening loader (see LoaderClient.tsx) ---- */
   html.sl-lock { overflow: hidden; }
   html.sl-skip .site-loader { display: none; }
@@ -251,20 +322,11 @@ body {
   .sl-mover { position: absolute; inset: 0; will-change: transform; }
   .sl-dark { position: absolute; inset: 0; background: var(--caffeine-dark); }
 
-  .sl-milk {
-    position: absolute;
-    inset: 0;
-    --fh: calc(var(--sl-w) * 0.21);
-    transform: translateY(calc((1 - var(--p)) * -1 * (100% + var(--fh))));
-    will-change: transform;
-  }
+  /* JS writes the transforms (translate3d) once per frame; these are just the
+     off-screen starting positions before the first frame. */
+  .sl-milk { position: absolute; inset: 0; transform: translate3d(0, -130%, 0); will-change: transform; }
   .sl-milk-body { position: absolute; inset: 0; background: var(--caffeine-drip); overflow: hidden; }
-  .sl-milk-inner {
-    position: absolute;
-    inset: 0;
-    transform: translateY(calc((1 - var(--p)) * (100% + var(--fh))));
-    will-change: transform;
-  }
+  .sl-milk-inner { position: absolute; inset: 0; transform: translate3d(0, 130%, 0); will-change: transform; }
 
   /* Drip fringe. --bottom hangs off the poured milk; --top is the same shape
      flipped and hangs off the top of the sheet (trailing tails). */
@@ -275,56 +337,15 @@ body {
     height: auto;
     overflow: visible;
   }
-  .sl-fringe--bottom {
-    top: 100%;
-    margin-top: -2px;
-    transform: translateX(-50%);
-    filter: drop-shadow(0 10px 10px rgb(0 0 0 / 0.28));
-  }
-  .sl-fringe--top {
-    bottom: 100%;
-    margin-bottom: -2px;
-    transform: translateX(-50%) rotate(180deg);
-  }
-  .sl-drip { transform-box: fill-box; transform-origin: 50% 0; }
-  .sl-drip-in {
-    transform-box: fill-box;
-    transform-origin: 50% 0;
-    animation: sl-breathe var(--bd) ease-in-out infinite;
-    animation-delay: var(--bdel);
-  }
-  @keyframes sl-breathe {
-    0%, 100% { transform: scaleY(1); }
-    50% { transform: scaleY(var(--be)); }
-  }
-  /* Drops that let go of the longest drips and fall away. */
-  .sl-fall {
-    opacity: 0;
-    transform-box: fill-box;
-    transform-origin: 50% 50%;
-    animation: sl-fall 2.6s cubic-bezier(0.5, 0, 0.9, 0.6) infinite;
-    animation-delay: var(--fdel);
-  }
-  @keyframes sl-fall {
-    0%, 55% { opacity: 0; transform: translateY(0) scale(0.5); }
-    62% { opacity: 1; transform: translateY(4px) scale(1); }
-    100% { opacity: 1; transform: translateY(300px) scale(0.85, 1.4); }
-  }
+  .sl-fringe--bottom { top: 100%; margin-top: -2px; transform: translateX(-50%); }
+  .sl-fringe--top { bottom: 100%; margin-bottom: -2px; transform: translateX(-50%) rotate(180deg); }
 
   .site-loader[data-phase="drain"] .sl-mover {
     animation: sl-drain 1.35s cubic-bezier(0.55, 0.02, 0.85, 0.5) forwards;
   }
-  .site-loader[data-phase="drain"] .sl-drip { animation: sl-stretch 1.2s cubic-bezier(0.4, 0, 0.9, 0.6) both; animation-delay: var(--dd); }
-  .site-loader[data-phase="drain"] .sl-drip-in,
-  .site-loader[data-phase="drain"] .sl-fall { animation: none; }
-  .site-loader[data-phase="drain"] .sl-fall { opacity: 0; }
   @keyframes sl-drain {
     0% { transform: translateY(0); }
     100% { transform: translateY(calc(100% + var(--sl-w) * 0.24)); }
-  }
-  @keyframes sl-stretch {
-    from { transform: scale(1, 1); }
-    to { transform: scale(0.8, var(--sy)); }
   }
 
   @keyframes sl-fade { to { opacity: 0; } }
@@ -374,7 +395,8 @@ body {
     .site-loader[data-phase="drain"] .sl-mover {
       animation: sl-fade 0.4s ease forwards;
     }
-    .site-loader[data-phase="drain"] .sl-drip { animation: none; }
+    .site-loader[data-phase="drain"] .md-stem,
+    .site-loader[data-phase="drain"] .md-bulb { animation: none; }
     .sl-fringe--top { display: none; }
     .hscroll__track {
       scroll-behavior: auto;
@@ -385,8 +407,11 @@ body {
     .hero-glow,
     .menu-rise,
     .story-kicker-dot,
-    .sl-drip-in,
-    .sl-fall,
+    .md-flow .md-stem,
+    .md-flow .md-bulb,
+    .md-drop .md-stem,
+    .md-drop .md-bulb,
+    .md-drop .md-falling,
     .story-badge,
     .story-hairline__light,
     .story-arrow svg,

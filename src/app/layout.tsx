@@ -33,24 +33,32 @@ const plusJakarta = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
-/* The rest of the curated font pairings (see src/lib/theme-presets.ts).
+/* LOADING SPEED: only the default pairing above (Comfortaa + Plus Jakarta
+   Sans) is preloaded. The 11 fonts below used to be preloaded on every page
+   view too — about 40 font files competing with the hero picture for
+   bandwidth — even though a visitor only ever uses the one pairing selected
+   in Admin. With preload off they are still declared, and the browser
+   downloads a font only at the moment the page actually draws text with it,
+   so switching pairings in the admin still works with no redeploy.
+
+   The rest of the curated font pairings (see src/lib/theme-presets.ts).
    All of these are self-hosted at build time by next/font — nothing here
    makes a request to Google's servers at runtime. Loading the full set
    unconditionally (rather than only the currently-selected pairing) is
    what lets the admin switch fonts in Admin → Theme & Colors with zero
    redeploy: every font is already on the page, just not applied until its
    CSS variable is selected by ThemeVars.tsx. */
-const playfair = Playfair_Display({ variable: "--font-playfair", subsets: ["latin"], weight: ["600", "700"] });
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
-const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], weight: ["500", "600", "700"] });
-const poppins = Poppins({ variable: "--font-poppins", subsets: ["latin"], weight: ["500", "600", "700"] });
-const dmSerif = DM_Serif_Display({ variable: "--font-dm-serif", subsets: ["latin"], weight: ["400"] });
-const dmSans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"], weight: ["400", "500", "600", "700"] });
-const spaceGrotesk = Space_Grotesk({ variable: "--font-space-grotesk", subsets: ["latin"], weight: ["500", "600", "700"] });
-const workSans = Work_Sans({ variable: "--font-work-sans", subsets: ["latin"], weight: ["400", "500", "600"] });
-const cormorant = Cormorant_Garamond({ variable: "--font-cormorant", subsets: ["latin"], weight: ["600", "700"] });
-const nunitoSans = Nunito_Sans({ variable: "--font-nunito", subsets: ["latin"], weight: ["400", "500", "600"] });
-const quicksand = Quicksand({ variable: "--font-quicksand", subsets: ["latin"], weight: ["500", "600", "700"] });
+const playfair = Playfair_Display({ variable: "--font-playfair", subsets: ["latin"], weight: ["600", "700"], preload: false });
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"], weight: ["400", "500", "600", "700"], preload: false });
+const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], weight: ["500", "600", "700"], preload: false });
+const poppins = Poppins({ variable: "--font-poppins", subsets: ["latin"], weight: ["500", "600", "700"], preload: false });
+const dmSerif = DM_Serif_Display({ variable: "--font-dm-serif", subsets: ["latin"], weight: ["400"], preload: false });
+const dmSans = DM_Sans({ variable: "--font-dm-sans", subsets: ["latin"], weight: ["400", "500", "600", "700"], preload: false });
+const spaceGrotesk = Space_Grotesk({ variable: "--font-space-grotesk", subsets: ["latin"], weight: ["500", "600", "700"], preload: false });
+const workSans = Work_Sans({ variable: "--font-work-sans", subsets: ["latin"], weight: ["400", "500", "600"], preload: false });
+const cormorant = Cormorant_Garamond({ variable: "--font-cormorant", subsets: ["latin"], weight: ["600", "700"], preload: false });
+const nunitoSans = Nunito_Sans({ variable: "--font-nunito", subsets: ["latin"], weight: ["400", "500", "600"], preload: false });
+const quicksand = Quicksand({ variable: "--font-quicksand", subsets: ["latin"], weight: ["500", "600", "700"], preload: false });
 
 const ALL_FONT_VARIABLES = [
   comfortaa.variable,

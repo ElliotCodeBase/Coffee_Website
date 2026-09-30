@@ -1,99 +1,49 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import type { LoaderConfig } from "@/lib/loader-config";
+import { DripField, bandPath, makeDrips } from "@/components/site/MilkDrips";
 
 /* Opening loading animation.
 
    1. Milk pours down from the top of the screen as the percentage counts,
-      its lower edge a live fringe of drips that swell, stretch and let go of
-      drops (the number is drawn twice — light on the dark background, dark
-      on top of the milk — so it stays readable as the milk passes through).
+      its lower edge a fringe of drips that swell, stretch and let go of drops
+      (the number is drawn twice — light on the dark background, dark on top
+      of the milk — so it stays readable as the milk passes through).
    2. At 100% the whole screen is milk. It then falls away down the screen,
       dragging stringy tails behind it, and the site is uncovered from the
       top.
 
-   The percentage is honest: it follows a smooth curve for the chosen
-   length, but is held at 94% until the page has really finished loading
-   (window "load" + web fonts), so it never says 100% while things are still
-   arriving. Options come from Admin → Theme & Colors → Loading animation.
-   prefers-reduced-motion gets a short fade instead of waves and drips. */
+   Performance: the milk is moved by writing a transform once per frame
+   (no CSS-variable cascade, no filters), the drips are plain shapes animated
+   with transforms (see MilkDrips.tsx), and the fringe is memoized so the
+   percentage ticking up never re-renders it.
+
+   The percentage is honest: it follows a smooth curve for the chosen length,
+   but is held at 94% until fonts and the hero picture are really ready, so it
+   never says 100% while things are still arriving. It deliberately does NOT
+   wait for the browser's full "load" event — that also waits for every
+   below-the-fold asset and could hold the loader for seconds. Options come
+   from Admin → Look & Feel → Loading animation. prefers-reduced-motion gets a
+   short fade instead of waves and drips. */
 
 const SEEN_KEY = "sl-seen";
-/* Drip fringe: deterministic so server and browser markup match. */
-function rng(seed: number) {
-  let a = seed;
-  return () => {
-    a = (a * 1664525 + 1013904223) % 4294967296;
-    return a / 4294967296;
-  };
-}
-type FringeDrip = { cx: number; w: number; L: number; r: number; sy: number; dd: number; bd: number; be: number; fd: number };
-const FRINGE: FringeDrip[] = (() => {
-  const rand = rng(41);
-  const out: FringeDrip[] = [];
-  let x = 24 + rand() * 20;
-  while (x < 1440 - 20) {
-    const roll = rand();
-    const w = roll < 0.24 ? 22 + rand() * 10 : roll < 0.72 ? 14 + rand() * 6 : 11 + rand() * 4;
-    const L = roll < 0.24 ? 16 + rand() * 18 : roll < 0.72 ? 42 + rand() * 46 : 100 + rand() * 90;
-    out.push({
-      cx: x,
-      w,
-      L,
-      r: w * 0.7 + 3,
-      sy: 1.5 + rand() * 1.4,
-      dd: rand() * 0.45,
-      bd: 2.0 + rand() * 2.2,
-      be: roll < 0.24 ? 1.14 : 1.22 + rand() * 0.26,
-      fd: -rand() * 6,
-    });
-    x += 26 + rand() * 42;
-  }
-  return out;
-})();
-const bandY = (x: number) => 24 + 4 * Math.sin(x / 110) + 3 * Math.sin(x / 41);
-const BAND = (() => {
-  const p = [`M-80 -10L1520 -10L1520 ${bandY(1520).toFixed(1)}`];
-  for (let x = 1520; x >= -80; x -= 12) p.push(`L${x} ${bandY(x).toFixed(1)}`);
-  return p.join("") + "Z";
-})();
+const FRINGE_RATIO = 300 / 1440;
 
-function Fringe({ id, className, living = false }: { id: string; className: string; living?: boolean }) {
+const bandY = (x: number) => 24 + 4 * Math.sin(x / 110) + 3 * Math.sin(x / 41);
+const DRIPS = makeDrips({ seed: 41, gap: [34, 72], dur: [2.0, 4.2], stillShare: 0.24, dropMinL: 62, dropSpacing: 90 });
+const BAND = bandPath(bandY, -10);
+
+const Fringe = memo(function Fringe({ className, living }: { className: string; living: boolean }) {
   return (
     <svg className={className} viewBox="0 0 1440 300" aria-hidden="true">
-      <defs>
-        <filter id={id} filterUnits="userSpaceOnUse" x="-80" y="-20" width="1600" height="440" colorInterpolationFilters="sRGB">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="6.5" result="b" />
-          <feColorMatrix in="b" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 26 -12" />
-        </filter>
-      </defs>
-      <g filter={`url(#${id})`} style={{ fill: "var(--caffeine-drip)" }}>
+      <g style={{ fill: "var(--caffeine-drip)" }}>
         <path d={BAND} />
-        {FRINGE.map((d, i) => (
-          <g key={i} className="sl-drip" style={{ "--sy": d.sy, "--dd": `${d.dd.toFixed(2)}s` } as CSSProperties}>
-            <g
-              className={living ? "sl-drip-in" : undefined}
-              style={{ "--bd": `${d.bd.toFixed(1)}s`, "--be": d.be.toFixed(2), "--bdel": `${d.fd.toFixed(1)}s` } as CSSProperties}
-            >
-              <rect x={d.cx - d.w / 2} y={12} width={d.w} height={d.L + 10} />
-              <circle cx={d.cx} cy={22 + d.L} r={d.r} />
-            </g>
-            {living && d.L > 62 && (
-              <circle
-                className="sl-fall"
-                cx={d.cx}
-                cy={22 + d.L}
-                r={d.r * 0.85}
-                style={{ "--fdel": `${(d.fd - d.cx / 300).toFixed(1)}s` } as CSSProperties}
-              />
-            )}
-          </g>
-        ))}
+        <DripField drips={DRIPS} bandY={bandY} mode={living ? "living" : "static"} />
       </g>
     </svg>
   );
-}
+});
 
 function Face({ tone, config, pct }: { tone: "dark" | "milk"; config: LoaderConfig; pct: number }) {
   const onMilk = tone === "milk";
@@ -102,7 +52,7 @@ function Face({ tone, config, pct }: { tone: "dark" | "milk"; config: LoaderConf
       {config.label && (
         <p
           className={`mb-3 max-w-full truncate text-xs sm:text-sm font-bold uppercase tracking-[0.34em] ${
-            onMilk ? "text-caffeine-dark/70" : "text-caffeine-gold"
+            onMilk ? "text-caffeine-dark/70" : "text-white/80"
           }`}
         >
           {config.label}
@@ -125,15 +75,20 @@ export default function LoaderClient({ config, preview = false }: { config: Load
   const [phase, setPhase] = useState<"loading" | "drain" | "gone">("loading");
   const [pct, setPct] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
+  const milkRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const root = rootRef.current;
-    if (!config.enabled) return;
+    const milk = milkRef.current;
+    const inner = innerRef.current;
+    if (!config.enabled || !root || !milk || !inner) return;
+
     if (!preview && config.frequency === "session") {
       try {
         if (sessionStorage.getItem(SEEN_KEY)) {
           // Already shown this session: just keep it out of sight.
-          if (root) root.style.display = "none";
+          root.style.display = "none";
           return;
         }
         sessionStorage.setItem(SEEN_KEY, "1");
@@ -147,24 +102,44 @@ export default function LoaderClient({ config, preview = false }: { config: Load
     const html = document.documentElement;
     if (!preview) html.classList.add("sl-lock");
 
-    let loaded = preview || document.readyState === "complete";
-    let fontsReady = preview || typeof document.fonts === "undefined";
-    const isReady = () => loaded && fontsReady;
-    const onLoad = () => {
-      loaded = true;
+    /* Geometry is measured once (and on resize), never per frame. */
+    let H = 0;
+    let FH = 0;
+    const measure = () => {
+      H = root.clientHeight;
+      FH = Math.max(root.clientWidth, 560) * FRINGE_RATIO;
     };
-    if (!loaded) window.addEventListener("load", onLoad);
+    measure();
+    window.addEventListener("resize", measure);
+    const place = (p: number) => {
+      const off = (1 - p) * (H + FH);
+      milk.style.transform = `translate3d(0,${-off}px,0)`;
+      inner.style.transform = `translate3d(0,${off}px,0)`;
+    };
+    place(0);
+
+    /* Ready = fonts are in and the hero picture has arrived. */
+    let fontsReady = preview || typeof document.fonts === "undefined";
     if (!fontsReady) {
       document.fonts.ready.then(
         () => (fontsReady = true),
         () => (fontsReady = true)
       );
     }
-    // Never hold the visitor hostage to a slow third-party asset.
+    const heroImg = preview ? null : document.querySelector<HTMLImageElement>("#hero-header img");
+    let imgReady = !heroImg || (heroImg.complete && heroImg.naturalWidth > 0);
+    const onImg = () => {
+      imgReady = true;
+    };
+    if (!imgReady && heroImg) {
+      heroImg.addEventListener("load", onImg, { once: true });
+      heroImg.addEventListener("error", onImg, { once: true });
+    }
+    // Never hold the visitor hostage to a slow asset.
     const hardCap = window.setTimeout(() => {
-      loaded = true;
       fontsReady = true;
-    }, Math.max(D + 3500, 7000));
+      imgReady = true;
+    }, Math.max(D + 1500, 4500));
 
     const timers: number[] = [];
     let raf = 0;
@@ -180,8 +155,8 @@ export default function LoaderClient({ config, preview = false }: { config: Load
     const tick = (now: number) => {
       const x = Math.min(1, (now - t0) / D);
       let p = 1 - Math.pow(1 - x, 2.2);
-      if (!isReady()) p = Math.min(p, 0.94);
-      rootRef.current?.style.setProperty("--p", p.toFixed(4));
+      if (!(fontsReady && imgReady)) p = Math.min(p, 0.94);
+      place(p);
       const shown = p >= 1 ? 100 : Math.min(99, Math.floor(p * 100));
       if (shown !== last) {
         last = shown;
@@ -199,7 +174,9 @@ export default function LoaderClient({ config, preview = false }: { config: Load
       cancelAnimationFrame(raf);
       window.clearTimeout(hardCap);
       timers.forEach((t) => window.clearTimeout(t));
-      window.removeEventListener("load", onLoad);
+      window.removeEventListener("resize", measure);
+      heroImg?.removeEventListener("load", onImg);
+      heroImg?.removeEventListener("error", onImg);
       html.classList.remove("sl-lock");
     };
   }, [config.enabled, config.durationMs, config.frequency, preview]);
@@ -211,7 +188,6 @@ export default function LoaderClient({ config, preview = false }: { config: Load
       ref={rootRef}
       className={`site-loader ${preview ? "site-loader--preview" : ""}`}
       data-phase={phase}
-      style={{ "--p": 0 } as CSSProperties}
       aria-hidden={phase === "drain" ? true : undefined}
     >
       <p className="sr-only" role="status">
@@ -222,19 +198,18 @@ export default function LoaderClient({ config, preview = false }: { config: Load
           <Face tone="dark" config={config} pct={pct} />
         </div>
 
-        <div className="sl-milk">
+        <div ref={milkRef} className="sl-milk">
           <div className="sl-milk-body">
-            <div className="sl-milk-inner">
+            <div ref={innerRef} className="sl-milk-inner">
               <Face tone="milk" config={config} pct={pct} />
             </div>
           </div>
-          <Fringe id="sl-goo-a" className="sl-fringe sl-fringe--bottom" living />
+          <Fringe className="sl-fringe sl-fringe--bottom" living />
         </div>
 
-        {/* The same fringe, flipped, hangs off the TOP of the sheet. It is
-            off screen while the milk pours; once the sheet falls it trails
-            behind as stretching tails. */}
-        <Fringe id="sl-goo-b" className="sl-fringe sl-fringe--top" />
+        {/* The same fringe, flipped, hangs off the TOP of the sheet: off
+            screen while the milk pours, then trailing tails as it falls. */}
+        <Fringe className="sl-fringe sl-fringe--top" living={false} />
       </div>
     </div>
   );

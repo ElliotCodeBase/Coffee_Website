@@ -52,7 +52,21 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    let heroDone = false;
+    let storyOn = false;
     function apply(progress: number) {
+      /* Slow ambient drift/glow only runs while it can be seen: the hero
+         halves are ~invisible once split, and the story photo is invisible
+         until the story starts. Flipping these two classes is what lets the
+         browser stop compositing three full-screen animated layers. */
+      const nowDone = progress > 0.62;
+      const nowStory = progress > 0.4;
+      if (nowDone !== heroDone || nowStory !== storyOn) {
+        heroDone = nowDone;
+        storyOn = nowStory;
+        wrapperRef.current?.classList.toggle("hero-done", heroDone);
+        wrapperRef.current?.classList.toggle("story-on", storyOn);
+      }
       const splitP = clamp(progress / 0.55);
       const storyP = clamp((progress - 0.4) / 0.6);
 
@@ -164,10 +178,16 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
       return reducedMotion ? (raw > 0.05 ? 1 : 0) : clamp(raw);
     }
 
+    /* The loop only runs while there is something to animate: it wakes on
+       scroll, eases toward the target, and goes back to sleep once settled.
+       (It used to run every frame forever, re-writing ~25 style properties
+       even when nothing had moved.) */
     let rafId: number | null = null;
     let smoothed = computeProgress();
+    let inView = true;
 
     function loop() {
+      rafId = null;
       const target = computeProgress();
       if (reducedMotion) {
         smoothed = target;
@@ -176,11 +196,11 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
         if (Math.abs(target - smoothed) < 0.0006) smoothed = target;
       }
       apply(smoothed);
-      rafId = requestAnimationFrame(loop);
+      if (smoothed !== target) rafId = requestAnimationFrame(loop);
     }
 
-    function startLoop() {
-      if (rafId === null) rafId = requestAnimationFrame(loop);
+    function wake() {
+      if (inView && rafId === null) rafId = requestAnimationFrame(loop);
     }
     function stopLoop() {
       if (rafId !== null) {
@@ -190,10 +210,12 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
     }
 
     apply(smoothed);
+    window.addEventListener("scroll", wake, { passive: true });
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) startLoop();
+        inView = entry.isIntersecting;
+        if (inView) wake();
         else stopLoop();
       },
       { rootMargin: "100px 0px" }
@@ -205,13 +227,16 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
       apply(smoothed);
     });
     if (wrapperRef.current) resizeObserver.observe(wrapperRef.current);
-    window.addEventListener("load", () => {
+    const onLoad = () => {
       smoothed = computeProgress();
       apply(smoothed);
-    });
+    };
+    window.addEventListener("load", onLoad);
 
     return () => {
       stopLoop();
+      window.removeEventListener("scroll", wake);
+      window.removeEventListener("load", onLoad);
       observer.disconnect();
       resizeObserver.disconnect();
     };
@@ -249,7 +274,7 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
               src={storyImg}
               alt=""
               aria-hidden="true"
-              className="hero-drift absolute inset-0 w-full h-full object-cover"
+              className="hero-drift hero-drift--story absolute inset-0 w-full h-full object-cover"
               loading="lazy"
             />
           </div>
@@ -282,6 +307,8 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
             alt="Cozy coffee shop interior"
             className="hero-drift absolute inset-0 w-full h-full object-cover opacity-60"
             loading="eager"
+            decoding="async"
+            fetchPriority="high"
           />
         </div>
         <div
@@ -305,8 +332,8 @@ export default function HeroStory({ settings }: { settings: SiteSettings | null 
         />
 
         {/* Warm lamplight that slowly breathes over the whole panel. */}
-        <div ref={glowRef} aria-hidden="true" className="pointer-events-none absolute inset-0">
-          <div className="hero-glow absolute inset-0" />
+        <div ref={glowRef} aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="hero-glow absolute -right-[12%] -top-[14%] h-[88%] w-[78%]" />
         </div>
 
         {/* Hero text */}

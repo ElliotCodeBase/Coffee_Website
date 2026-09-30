@@ -60,10 +60,10 @@ export default function Header({
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 text-white border-b transition-[background-color,border-color,box-shadow,backdrop-filter] duration-500 ease-out ${
+      className={`fixed top-0 left-0 right-0 z-50 text-white border-b transition-[background-color,border-color,box-shadow] duration-500 ease-out ${
         condensed
-          ? "bg-caffeine-dark/95 backdrop-blur-xl border-white/10 shadow-lg shadow-black/20"
-          : "bg-caffeine-dark/70 backdrop-blur-md border-white/5 shadow-none"
+          ? "bg-caffeine-dark/95 border-white/10 shadow-lg shadow-black/20"
+          : "bg-caffeine-dark/80 border-white/5 shadow-none"
       }`}
     >
       {/* Main navigation bar. Height shrinks when the user scrolls down. */}
@@ -167,7 +167,7 @@ export default function Header({
       {/* Mobile navigation menu. Animates open and closed. */}
       <div
         id="mobile-nav"
-        className={`md:hidden overflow-hidden border-t border-white/10 bg-caffeine-dark/95 backdrop-blur-md transition-[max-height,opacity] duration-300 ease-out ${
+        className={`md:hidden overflow-hidden border-t border-white/10 bg-caffeine-dark/95 transition-[max-height,opacity] duration-300 ease-out ${
           mobileOpen ? "max-h-[70vh] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
