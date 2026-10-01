@@ -27,10 +27,10 @@ async function assertCanManageTeam() {
   } = await supabase.auth.getUser();
   if (!user) return { ok: false as const };
 
-  const { data: profile } = await supabase.from("profiles").select("role, is_main_admin").eq("id", user.id).single();
+  const { data: profile } = await supabase.from("profiles").select("role, is_main_admin, full_name").eq("id", user.id).single();
   if (profile?.role !== "admin" && profile?.role !== "developer") return { ok: false as const };
 
-  return { ok: true as const, userId: user.id, isMainAdmin: profile?.is_main_admin ?? false };
+  return { ok: true as const, userId: user.id, isMainAdmin: profile?.is_main_admin ?? false, name: (profile as { full_name?: string | null } | null)?.full_name ?? null };
 }
 
 export async function addTeamMember(formData: FormData): Promise<ActionResult> {
@@ -46,7 +46,7 @@ export async function addTeamMember(formData: FormData): Promise<ActionResult> {
   const requestedRole = String(formData.get("role") || "staff");
   const role = isAssignableRole(requestedRole) ? requestedRole : "staff";
 
-  const outcome = await inviteTeamUser({ email, fullName, role });
+  const outcome = await inviteTeamUser({ email, fullName, role, invitedBy: check.name });
   if (!outcome.ok) return { error: outcome.error };
 
   revalidatePath("/admin/staff");

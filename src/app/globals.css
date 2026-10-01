@@ -51,6 +51,13 @@ body {
   --font-body: var(--font-body);
 }
 
+/* The admin panel is light. Without this, the website's theme color showed
+   through below the content on phones (overscroll and the home-indicator strip). */
+html:has(.admin-shell),
+body:has(.admin-shell) {
+  background: #fafaf9;
+}
+
 body {
   background: var(--caffeine-cream);
   color: var(--caffeine-dark);
@@ -302,6 +309,9 @@ body {
   .md-paused .md-stem,
   .md-paused .md-bulb,
   .md-paused .md-falling { animation-play-state: paused; }
+
+    @keyframes admin-progress { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
+  .admin-progress { animation: admin-progress 1s ease-in-out infinite; }
 
   /* ---- Opening loader (see LoaderClient.tsx) ---- */
   html.sl-lock { overflow: hidden; }

@@ -47,9 +47,15 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  /* getClaims() verifies the session token locally (and refreshes it when it
+     is about to expire), instead of a network round trip to Supabase Auth on
+     every admin click. If the project still uses legacy symmetric JWT keys it
+     falls back to the same server check getUser() did. The role lookup below
+     still goes to the database, so a deleted account has no profile row and
+     is refused. */
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const userId = claimsData?.claims?.sub ?? null;
+  const user = userId ? { id: userId } : null;
 
   function redirect(url: URL) {
     const redirectResponse = NextResponse.redirect(url);

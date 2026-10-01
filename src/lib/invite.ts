@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { classifyInviteError } from "@/lib/auth-errors";
 import type { UserRole } from "@/types/database";
+import { Resend } from "resend";
+import { buildInviteEmail } from "@/lib/invite-email";
 
 /* Shared by the Team page (addTeamMember) and the Developer page
    (inviteUser) so both invite paths behave identically. Server-only:
@@ -26,10 +28,57 @@ export function normalizeName(raw: string): string | null {
   return cleaned || null;
 }
 
+/* Send the designed invitation through Resend (the same sender the contact
+   form uses). Returns null on success, or a short reason on failure. */
+async function sendDesignedInvite(
+  admin: ReturnType<typeof createAdminClient>,
+  opts: { to: string; fullName: string | null; role: UserRole; inviteLink: string; invitedBy: string | null }
+): Promise<string | null> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.CONTACT_FORM_FROM_EMAIL;
+  if (!apiKey || !from) return "not_configured";
+
+  // Brand the email with the site's own name and colors. Never let this fail the invite.
+  let businessName = "";
+  let colors: { dark?: string | null; accent?: string | null; cream?: string | null; gold?: string | null } = {};
+  try {
+    const [{ data: site }, { data: theme }] = await Promise.all([
+      admin.from("site_settings").select("business_name").eq("id", 1).maybeSingle(),
+      admin.from("theme_settings").select("color_dark, color_accent, color_cream, color_gold").eq("id", 1).maybeSingle(),
+    ]);
+    businessName = site?.business_name ?? "";
+    colors = { dark: theme?.color_dark, accent: theme?.color_accent, cream: theme?.color_cream, gold: theme?.color_gold };
+  } catch {
+    /* defaults */
+  }
+
+  const { subject, html, text } = buildInviteEmail({
+    businessName,
+    inviteLink: opts.inviteLink,
+    role: opts.role,
+    fullName: opts.fullName,
+    invitedBy: opts.invitedBy,
+    colors,
+  });
+
+  try {
+    const { error } = await new Resend(apiKey).emails.send({ from, to: [opts.to], subject, html, text });
+    if (error) {
+      console.error("sendDesignedInvite: Resend rejected the email", error.name, error.message);
+      return `${error.name ?? "resend_error"}: ${error.message ?? "unknown error"}`.slice(0, 280);
+    }
+    return null;
+  } catch (err) {
+    console.error("sendDesignedInvite: could not reach Resend", err instanceof Error ? err.message : err);
+    return "Could not reach the email provider.";
+  }
+}
+
 export async function inviteTeamUser(input: {
   email: string;
   fullName: string | null;
   role: UserRole;
+  invitedBy?: string | null;
 }): Promise<InviteOutcome> {
   let admin: ReturnType<typeof createAdminClient>;
   try {
@@ -51,38 +100,81 @@ export async function inviteTeamUser(input: {
   let inviteLink: string | null = null;
   let deliveryReason = "";
 
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(input.email, { redirectTo, data: metadata });
+  /* PREFERRED PATH — a designed email we send ourselves: create the invite
+     without letting Supabase email anything, then send our own branded
+     message through Resend. Needs RESEND_API_KEY and CONTACT_FORM_FROM_EMAIL
+     (an address on a domain verified in Resend). */
+  const canSendDesigned = Boolean(process.env.RESEND_API_KEY && process.env.CONTACT_FORM_FROM_EMAIL);
+  let sentDesigned = false;
 
-  if (!error && data?.user) {
-    userId = data.user.id;
-  } else {
-    const failure = classifyInviteError(error);
-    /* Log the REAL error server-side (visible in Vercel / hosting logs). */
-    console.error("inviteTeamUser: inviteUserByEmail failed", {
-      code: error?.code,
-      status: error?.status,
-      message: error?.message,
-      kind: failure.kind,
-    });
-
-    if (failure.kind !== "email_delivery") return { ok: false, error: failure.message };
-
-    /* The account can be created but the email can't be sent. Rather than
-       leaving the admin stuck, create the invite without sending mail and
-       hand the link back so they can deliver it themselves. */
+  if (canSendDesigned) {
     const link = await admin.auth.admin.generateLink({
       type: "invite",
       email: input.email,
       options: { redirectTo, data: metadata },
     });
     const actionLink: string | undefined = link.data?.properties?.action_link;
-    if (link.error || !link.data?.user || !actionLink) {
-      console.error("inviteTeamUser: generateLink fallback failed", { code: link.error?.code, message: link.error?.message });
-      return { ok: false, error: failure.message };
+
+    if (!link.error && link.data?.user && actionLink) {
+      userId = link.data.user.id;
+      const failure = await sendDesignedInvite(admin, {
+        to: input.email,
+        fullName: input.fullName,
+        role: input.role,
+        inviteLink: actionLink,
+        invitedBy: input.invitedBy ?? null,
+      });
+      if (failure === null) {
+        sentDesigned = true;
+      } else {
+        // The account exists but the email didn't go out: hand the link back.
+        inviteLink = actionLink;
+        deliveryReason = `The invitation email couldn't be sent (${failure}). Send them this link yourself instead.`;
+      }
+    } else {
+      const failure = classifyInviteError(link.error);
+      console.error("inviteTeamUser: generateLink failed", { code: link.error?.code, status: link.error?.status, kind: failure.kind });
+      if (failure.kind === "exists" || failure.kind === "config" || failure.kind === "invalid_email" || failure.kind === "database") {
+        return { ok: false, error: failure.message };
+      }
+      // anything else: fall through to Supabase's own email below
     }
-    userId = link.data.user.id;
-    inviteLink = actionLink;
-    deliveryReason = failure.message;
+  }
+
+  if (!sentDesigned && !inviteLink) {
+    const { data, error } = await admin.auth.admin.inviteUserByEmail(input.email, { redirectTo, data: metadata });
+
+    if (!error && data?.user) {
+      userId = data.user.id;
+    } else {
+      const failure = classifyInviteError(error);
+      /* Log the REAL error server-side (visible in Vercel / hosting logs). */
+      console.error("inviteTeamUser: inviteUserByEmail failed", {
+        code: error?.code,
+        status: error?.status,
+        message: error?.message,
+        kind: failure.kind,
+      });
+
+      if (failure.kind !== "email_delivery") return { ok: false, error: failure.message };
+
+      /* The account can be created but the email can't be sent. Rather than
+         leaving the admin stuck, create the invite without sending mail and
+         hand the link back so they can deliver it themselves. */
+      const link = await admin.auth.admin.generateLink({
+        type: "invite",
+        email: input.email,
+        options: { redirectTo, data: metadata },
+      });
+      const actionLink: string | undefined = link.data?.properties?.action_link;
+      if (link.error || !link.data?.user || !actionLink) {
+        console.error("inviteTeamUser: generateLink fallback failed", { code: link.error?.code, message: link.error?.message });
+        return { ok: false, error: failure.message };
+      }
+      userId = link.data.user.id;
+      inviteLink = actionLink;
+      deliveryReason = failure.message;
+    }
   }
 
   if (!userId) {

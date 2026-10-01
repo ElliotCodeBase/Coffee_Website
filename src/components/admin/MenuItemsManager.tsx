@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import type { MenuItem, MenuCategory } from "@/types/database";
 import { createMenuItem, updateMenuItem, deleteMenuItem } from "@/lib/actions/menu";
 import ImageUploadField from "@/components/admin/ImageUploadField";
@@ -271,11 +271,16 @@ function MenuItemCard({
 }
 
 // ── Main component ─────────────────────────────────────────────────────────
-export default function MenuItemsManager({ items }: { items: MenuItem[] }) {
+export default function MenuItemsManager({ items: serverItems }: { items: MenuItem[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [category, setCategory] = useState<MenuCategory | "all">("all");
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  /* A deleted item disappears the instant it is confirmed; the database call
+     runs in the background. If it fails, the item comes back automatically
+     and the error is shown. */
+  const [items, removeNow] = useOptimistic(serverItems, (list: MenuItem[], id: string) => list.filter((i) => i.id !== id));
 
   const filtered =
     category === "all" ? items : items.filter((i) => i.category === category);
@@ -293,8 +298,11 @@ export default function MenuItemsManager({ items }: { items: MenuItem[] }) {
 
   function handleDelete(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    setDeleteError(null);
     startTransition(async () => {
-      await deleteMenuItem(id);
+      removeNow(id);
+      const result = await deleteMenuItem(id);
+      if (result?.error) setDeleteError(`${result.error} "${name}" was put back.`);
     });
   }
 
@@ -339,6 +347,15 @@ export default function MenuItemsManager({ items }: { items: MenuItem[] }) {
         </AdminButton>
       </div>
 
+      {deleteError && (
+        <div role="alert" className="flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          <span>{deleteError}</span>
+          <button type="button" onClick={() => setDeleteError(null)} className="shrink-0 font-bold underline underline-offset-2">
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Create / edit form — an overlay, so the card grid never changes size */}
       {(showNew || editingItem) && (
         <AdminModal title={editingItem ? `Edit “${editingItem.name}”` : "New menu item"} onClose={closeEditor}>
@@ -368,7 +385,7 @@ export default function MenuItemsManager({ items }: { items: MenuItem[] }) {
                 setEditingId(item.id);
               }}
               onDelete={() => handleDelete(item.id, item.name)}
-              disabled={isPending}
+              disabled={false}
             />
           ))}
         </div>

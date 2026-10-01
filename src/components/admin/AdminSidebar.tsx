@@ -64,6 +64,12 @@ export default function AdminSidebar({
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  /* The link that was just pressed. It is highlighted immediately, before the
+     next page has loaded, so the panel feels instant; it clears itself once
+     the URL actually changes. */
+  const [pending, setPending] = useState<{ href: string; from: string } | null>(null);
+  const pendingHref = pending && pending.from === pathname ? pending.href : null;
+  const setPendingHref = (href: string) => setPending({ href, from: pathname });
 
   const isStaff = role === "staff";
   const isDev = role === "developer";
@@ -71,7 +77,10 @@ export default function AdminSidebar({
 
   const groups: Group[] = isStaff ? STAFF_GROUPS : isDev ? [...ADMIN_GROUPS, DEV_GROUP] : ADMIN_GROUPS;
 
-  const isActive = (href: string) => (href === "/admin" ? pathname === href : pathname.startsWith(href));
+  const isActive = (href: string) => {
+    const current = pendingHref ?? pathname;
+    return href === "/admin" ? current === href : current.startsWith(href);
+  };
   const badgeFor = (item: Item) => (item.badgeKey === "messages" && newMessages > 0 ? newMessages : 0);
 
   function NavItem({ item }: { item: Item }) {
@@ -80,7 +89,10 @@ export default function AdminSidebar({
     return (
       <Link
         href={item.href}
-        onClick={() => setMobileOpen(false)}
+        onClick={() => {
+          setMobileOpen(false);
+          setPendingHref(item.href);
+        }}
         aria-current={active ? "page" : undefined}
         className={`group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
           active ? "bg-caffeine-dark text-white shadow-sm" : "text-stone-600 hover:bg-stone-100 hover:text-caffeine-dark"
@@ -162,6 +174,12 @@ export default function AdminSidebar({
 
   return (
     <>
+      {pendingHref && pendingHref !== pathname && (
+        <div className="fixed inset-x-0 top-0 z-[60] h-0.5 overflow-hidden bg-transparent" aria-hidden="true">
+          <div className="admin-progress h-full w-1/3 bg-caffeine-dark" />
+        </div>
+      )}
+
       {/* Phone top bar */}
       <div className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-stone-200 bg-white px-4 md:hidden">
         <p className="max-w-[65vw] truncate font-cozy text-base font-bold text-caffeine-dark">{businessName}</p>
@@ -197,6 +215,7 @@ export default function AdminSidebar({
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => setPendingHref(item.href)}
               className={`relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-semibold ${
                 active ? "text-caffeine-dark" : "text-stone-500"
               }`}
